@@ -185,8 +185,8 @@
     configuration = extend({}, defaultConfiguration, configuration, detectBrowser());
 
     var scriptTag = locateUsingScriptTag(),
-        scriptRoot = scriptTag.getAttribute("data-script-root"),
-        styleRoot = scriptTag.getAttribute("data-style-root"),
+        scriptRoot = scriptTag.getAttribute("data-script-root") || "/",
+        styleRoot = scriptTag.getAttribute("data-style-root") || "/",
         initialUsing = scriptTag.getAttribute("data-using"),
         initialStyleUsing = scriptTag.getAttribute("data-style-using");
 
