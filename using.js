@@ -1,7 +1,7 @@
 /*
-UsingJs
-C 2013 Benjamin McGregor
-Released under MIT Licence
+UsingJs script loader and dependency tracker
+Copyright 2013 Benjamin McGregor
+Released under the MIT Licence
 */
 
 (function (/** @type {Window} */global, configuration, undefined) {
@@ -246,7 +246,7 @@ Released under MIT Licence
     var scriptRoot = scriptTag.getAttribute("data-script-root"),
         styleRoot = scriptTag.getAttribute("data-style-root"),
         initialUsing = scriptTag.getAttribute("data-using"),
-        initialStyleUsing = scriptTag.getAttribute("data-style-using");
+        initialStyleUsing = scriptTag.getAttribute("data-using-css");
 
     //set up the script root
     if (scriptRoot && scriptRoot.substr(scriptRoot.length - 1, 1) !== "/") {
