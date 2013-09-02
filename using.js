@@ -1,56 +1,99 @@
+/*
+UsingJs
+C 2013 Benjamin McGregor
+Released under MIT Licence
+*/
 
-(function (global, configuration, undefined) {
+(function (/** @type {Window} */global, configuration, undefined) {
   "use strict";
 
   //default configuration settings
   var defaultConfiguration = {
+    /** @type {boolean} */
     noConflict: false,
-    tests: false
+    /** @type {string} */
+    scriptRoot: "/",
+    /** @type {string} */
+    styleRoot: "/"
   },
 
+  /** @type {Array.<Dependency>} */
   unknownDependencies = [],
 
   document = global.document,
     
   //various reused type definitions
+  /** @type {string} */
   object = "object",
+  /** @type {string} */
   string = "string",
+  /** @type {string} */
   array = "array",
+  /** @type {string} */
   arrayOfString = "array<string>",
+  /** @type {string} */
   arrayOfDependency = "array<dependency>",
+  /** @type {string} */
   dependency = "dependency",
+  /** @type {string} */
   date = "date",
+  /** @type {string} */
   regexp = "regexp",
     
   //valid types
+  /** @type {string} */
   js = "js",
+  /** @type {string} */
   css = "css",
+  /** @type {string} */
   usingContext = "usingContext",
+  /** @type {string} */
   page = "page",
     
+  /** @type {RegExp} */
   ieReg = /MSIE\s*(\d+)/i,
+  /** @type {RegExp} */
   chromeReg = /Chrome\/(\d+)/i,
+  /** @type {RegExp} */
   firefoxReg = /Firefox\/(\d+)/i,
+  /** @type {RegExp} */
   safariReg = /Safari\/(\d+)/i,
+  /** @type {RegExp} */
   jsReg = /\.((js)|(jscript))$/i,
+  /** @type {RegExp} */
   cssReg = /\.(css)$/i,
-  domainReg = /:\/\/([^\/]+)\/?/,
+  /** @type {RegExp} */
+  domainReg = /([a-zA-Z0-9\.]*:)\/\/([^\/]+)\/?/,
 
+  /** @type {string} */
   unknown = "unknown",
+  /** @type {string} */
   ie = "ie",
+  /** @type {string} */
   firefox = "ff",
+  /** @type {string} */
   chrome = "cr",
+  /** @type {string} */
   safari = "sf",
     
+  /** @type {number} */
   uninitiated = 0,
+  /** @type {number} */
   initiated = 1,
+  /** @type {number} */
   loading = 2,
+  /** @type {number} */
   loaded = 3,
+  /** @type {number} */
   resolved = 4,
+    /** @type {number} */
   withdrawn = 5,
+  /** @type {number} */
   destroyed = 6,
+  /** @type {number} */
   complete = 7,
-    
+  
+  /** @type {string} */
   interactive = "interactive";
 
   //general form of dependency: 
@@ -65,6 +108,7 @@
   
   //does a shallow copy of one or more objects into the object specified
   //extend(extendee, extender1, extender2, ..., extendern)
+  /** @param {...Object} var_args */
   function extend() {
     if(arguments.length <= 1) throw new Error("At least an extender and extendee are required");
 
@@ -85,6 +129,7 @@
   }
 
   //like extend, but for arrays
+  /** @param {...Array} var_args */
   function merge() {
     var mergee = arguments[0],
         merger,
@@ -108,6 +153,10 @@
 
   //uses array implementation if it exists, or a shim if it doesn't
   //didn't want to insert it into the Array prototype, so keeping it in this closure
+  /**
+    @param {Array} arr
+    @param {Object} obj
+  */
   function indexOf(arr, obj) {
     if (global.Array.prototype.indexOf) return global.Array.prototype.indexOf.apply(arr, obj);
 
@@ -119,6 +168,10 @@
   }
 
   //like above, but uses the dependency's "matches" function for equality
+  /**
+    @param {Array} arr
+    @param {Dependency} dep
+  */
   function indexOfDependency(arr, dep) {
     for (var index = 0; index < arr.length; index++) {
       if (arr[index].matches(dep)) return index;
@@ -128,18 +181,19 @@
   }
 
   //based off of typeof, but also discriminates between built in types and arrays of types
+  /** @param {Object} obj */
   function getType(obj) {
     if (typeof (obj) === object) {
       //lots of things count as objects, so let's get a lil more specific
-      if (obj.constructor === global.Array) {
+      if (obj.constructor === global["Array"]) {
         //an array where the inner type can be determined
         if (obj.length > 0) return array + "<" + getType(obj[0]) + ">";
         //an array where the inner type cannot be determined
         else return array + "<object>";
-      } else if (obj.constructor === global.RegExp) {
+      } else if (obj.constructor === global["RegExp"]) {
         //a regular expression
         return regexp;
-      } else if (obj.constructor === global.Date) {
+      } else if (obj.constructor === global["Date"]) {
         //a date
         return date;
       } else if (obj["src"]) {
@@ -181,12 +235,16 @@
   }
 
   //configures the script
+  /** @param {Object} options */
   function configure(options) {
     configuration = extend({}, defaultConfiguration, configuration, detectBrowser());
 
-    var scriptTag = locateUsingScriptTag(),
-        scriptRoot = scriptTag.getAttribute("data-script-root") || "/",
-        styleRoot = scriptTag.getAttribute("data-style-root") || "/",
+    var scriptTag = locateUsingScriptTag();
+
+    if (scriptTag === null) throw new Error("Could not locate the using.js script include. \nPlease specify the name of the source file in the configuration.");
+
+    var scriptRoot = scriptTag.getAttribute("data-script-root"),
+        styleRoot = scriptTag.getAttribute("data-style-root"),
         initialUsing = scriptTag.getAttribute("data-using"),
         initialStyleUsing = scriptTag.getAttribute("data-style-using");
 
@@ -210,25 +268,28 @@
 
   //finds the script tag that's referencing "using.js"
   function locateUsingScriptTag() {
-    var index,
+    var index, index2,
         allScriptTags = document.getElementsByTagName("script"),
         currentSrc,
-        usingJs = "using.js";
+        usingJs = ["using.js", "using.min.js", configuration.srcName];
 
     for (index = 0; index < allScriptTags.length; index++) {
       currentSrc = allScriptTags[index].src;
-      if (currentSrc.substr(currentSrc.length - usingJs.length, usingJs.length) === usingJs) return allScriptTags[index];
-      //if (allScriptTags[index].src.indexOf("using.js") !== -1) return allScriptTags[index];
+      for (index2 = 0; index2 < usingJs.length; index2++) {
+        if (currentSrc.substr(currentSrc.length - usingJs[index2].length, usingJs[index2].length) === usingJs[index2]) return allScriptTags[index];
+      }
+      
     }
 
     return null;
   }
 
+  /** @param {string} src */
   function isCrossServerLocation(src) {
     if(src && ((src.length >= 7 && src.substr(0, 7).toLowerCase() === "http://") || (src.length >= 8 && src.substr(0, 8).toLowerCase() === "https://"))) {
       if(global.location) {
         var domain = domainReg.exec(src);
-        return domain && domain[1] === global.location.host;
+        return domain && (domain[1] !== global.location.protocol || domain[2] !== global.location.host);
       } else {
         return true;
       }
@@ -237,6 +298,10 @@
     }
   }
 
+  /**
+    @param {string} src
+    @param {string} type
+  */
   function resolveSourceLocation(src, type) {
     //for simplicity's sake, I'm assuming src is just a single string
     var retVal = "" + src;
@@ -253,7 +318,19 @@
         //make sure we don't print out "//" in the source...
         retVal = retVal.substr(1);
       }
-      return configuration.scriptRoot + retVal;
+
+      //use the correct root directory
+      switch (type) {
+        case js:
+          return configuration.scriptRoot + retVal;
+
+        case css:
+          return configuration.styleRoot + retVal;
+
+        default:
+          return "/" + retVal;
+      }
+      
     }
   }
 
@@ -285,8 +362,13 @@
 
   //the alias map keeps track of all relationships between aliases and script locations
   var aliasMap = {
+    /**
+      @private
+      @type {Object.<string>} 
+    */
     map: {},
 
+    /** @protected */
     locateAlias: function (src) {
       for (var index in this._aliases) {
         if (this._aliases[index] === src) return index;
@@ -295,6 +377,7 @@
       return null;
     },
 
+    /** @protected */
     addAlias: function (alias, src) {
       if (getType(alias) !== string) throw new Error("The alias must be a string.");
 
@@ -338,6 +421,7 @@
       return this;
     },
 
+    /** @protected */
     resolveAlias: function (alias) {
 
       var sources = [], index;
@@ -379,6 +463,7 @@
     }
   }
 
+  /** Constructor */
   function Dependency(src, type) {
     this.src = src;
     this.type = type || js;
@@ -387,18 +472,25 @@
     this.dependentOn = [];
   }
 
-  Dependency.constructor = Dependency;
-
   extend(Dependency.prototype, {
+    /** @protected */
     src: null,                  //location of this dependency
+    /** @protected */
     type: js,                   //the type of this dependency
+    /** @protected */
     searched: false,            //whether or not this node has been searched through
+    /** @protected */
     status: uninitiated,
+    /** @protected */
     dependencyFor: null,        //dependencies observing this dependency
+    /** @protected */
     dependentOn: null,          //dependencies this dependency is observing
+    /** @protected */
     resolutionCallbacks: null,  //list of callbacks to run when the dependency is resolved,
+    /** @private */
     requestObj: null,
 
+    /** @protected */
     destroy: function () {
       if (this.status === destroyed) return;
 
@@ -427,6 +519,7 @@
       this.status = destroyed;
     },
 
+    /** @protected */
     notify: function () {
       //return if not currently resolved
       if (this.status !== resolved) return;
@@ -460,6 +553,7 @@
       }
     },
 
+    /** @protected */
     isReady: function () {
       if (this.status !== resolved && this.status !== complete) return false;
 
@@ -470,6 +564,7 @@
       return true;
     },
 
+    /** @protected */
     dependOn: function (otherDep) {
       //type checking
       if (!otherDep || otherDep.constructor !== Dependency) throw new Error("The other dependency must be a valid Dependency object.");
@@ -492,6 +587,7 @@
       }
     },
 
+    /** @protected */
     addResolutionCallback: function (callback) {
       if (getType(callback) !== "function") throw new Error("dependency resolution callback function must be a function.");
       if (this.stautus === resolved) {
@@ -501,6 +597,7 @@
       }
     },
 
+    /** @protected */
     matches: function (dep) {
       var depType = getType(dep);
 
@@ -511,6 +608,10 @@
       }
     },
 
+    /** 
+      @protected
+      @param {Dependency} dep
+    */
     locate: function (dep) {
       this.searched = true;
 
@@ -544,7 +645,10 @@
       return null;
     },
 
-    
+    /** 
+      @protected 
+      @param {Dependency} dep
+    */
     removeDependencyOn: function (dep) {
       if (this.matches(dep)) return;
 
@@ -564,7 +668,7 @@
     },
 
 
-
+    /** @protected */
     resolve: function () {
       if (this.status !== loaded) return;
 
@@ -604,6 +708,7 @@
       if(this.status !== destroyed) _this.notify();
     },
 
+    /** @protected */
     load: function () {
       var _this = this;
 
@@ -616,30 +721,38 @@
         _this.requestObj.defer = false;
         _this.requestObj.async = true;
 
+      } else if (_this.type === css) {
+        _this.requestObj = document.createElement("link");
+        _this.requestObj.type = "text/css";
+        _this.requestObj.href = resolveSourceLocation(_this.src, _this.type);
+        _this.requestObj.rel = "stylesheet";
 
-        //register event handlers
-        if (configuration.browser.name === ie && configuration.browser.version < 9) {
-          _this.requestObj.onreadystatechange = function () {
 
-            if (_this.requestObj.readyState === "complete" || _this.requestObj.readyState === "loaded") {
-              _this.requestObj.onreadystatechange = null;
-              _this.status = loaded;
-              _this.resolve();
-            }
-          }
-        } else {
-          _this.requestObj.addEventListener("load", function () {
-            _this.status = loaded;
-            _this.resolve();
-          }, true);
-        }
       } else {
         throw new Error("Attempting to load an unsupported file type: " + this.type);
+      }
+
+      //register event handlers
+      if (configuration.browser.name === ie && configuration.browser.version < 9) {
+        _this.requestObj.onreadystatechange = function () {
+
+          if (_this.requestObj.readyState === "complete" || _this.requestObj.readyState === "loaded") {
+            _this.requestObj.onreadystatechange = null;
+            _this.status = loaded;
+            _this.resolve();
+          }
+        }
+      } else {
+        _this.requestObj.addEventListener("load", function () {
+          _this.status = loaded;
+          _this.resolve();
+        }, true);
       }
 
       document.getElementsByTagName("head")[0].appendChild(this.requestObj);
     },
 
+    /** @protected */
     init: function () {
       if (this.status !== uninitiated) throw new Error("Attempting to initiate a previously initiated dependency.");
 
@@ -657,19 +770,24 @@
   
   //the dependency map keeps track of individual dependency structures and all dependencies registered with the system
   var dependencyMap = {
+    /** @private */
     _dependencies: {},
+    /** @private */
     _depenencyCount: 0,
 
+    /** @protected */
     clearSearchedFlags: function() {
       for (var index in this._dependencies) {
         this._dependencies[index].searched = false;
       }
     },
 
+    /** @protected */
     empty: function() {
       return this._depenencyCount === 0;
     },
 
+    /** @protected */
     locateInteractiveDependency: function () {
       var index, dependency;
 
@@ -683,6 +801,7 @@
       return null;
     },
 
+    /** @protected */
     locateDependency: function (dep) {
       switch(getType(dep)) {
         case string:
@@ -696,6 +815,7 @@
       }
     },
 
+    /** @protected */
     addDependency: function(dep) {
       if (!this.locateDependency(dep)) {
         var newDependency;
@@ -720,6 +840,7 @@
       return this;
     },
 
+    /** @protected */
     removeDependency: function(dep) {
       switch (getType(dep)) {
         case string:
@@ -739,6 +860,7 @@
       return this;
     },
 
+    /** @protected */
     resolve: function () {
       //go through existing dependencies and load where needed
       for (var index in this._dependencies) {
@@ -748,6 +870,7 @@
       }
     },
 
+    /** @protected */
     testCompleteness: function () {
       var index, status;
       
@@ -763,7 +886,7 @@
     }
   }
 
-  var readyCallbacks = [];
+  var /** @type {Array.<function()>} */ readyCallbacks = [];
 
   function allReady() {
     for (var index = 0; index < readyCallbacks.length; index++) {
@@ -771,25 +894,21 @@
     }
   }
 
-  var usingIndex = 0;
+  var /** @type {number} */ usingIndex = 0;
 
   //--------------------------------------------------------//
 
   //public access
   //--------------------------------------------------------//
   function using(src, callback) {
-    var sourceList, 
-        index,
-        usingDep,
-        dependencies,
-        dep,
-        executingDependency,
-        initialUsing = dependencyMap.empty();
+    var /** @type {Array.<string>} */ sourceList, 
+        /** @type {number} */ index,
+        /** @type {Dependency} */ usingDep,
+        /** @type {Array.<Dependency>} */ dependencies,
+        /** @type {Dependency} */ dep,
+        /** @type {Dependency} */ executingDependency,
+        /** @type {boolean} */ initialUsing = dependencyMap.empty();
 
-    //var test = dependencyMap.locateInteractiveDependency();
-    //if (test) {
-    //  if (global.console) console.log("Interactive dependency: " + test.src);
-    //}
 
     switch (getType(src)) {
       case "function":
@@ -863,11 +982,13 @@
   using.ready = function (callback) {
     readyCallbacks.push(callback);
   }
+  using["ready"] = using.ready;
 
   using.config = function (config) {
     configure(config);
     return using;
   }
+  using["config"] = using.config;
 
   using.conditionally = function (condition, src, callback) {
     if (condition) {
@@ -876,6 +997,7 @@
 
     return using;
   }
+  using["conditionally"] = using.conditionally;
 
   using.alias = function (alias, src) {
     var existingAlias = aliasMap.resolveAlias(alias);
@@ -886,6 +1008,7 @@
 
     return using;
   }
+  using["alias"] = using.alias;
 
   using.css = function (src, callback) {
     var index;
@@ -915,9 +1038,8 @@
       default:
         throw new Error("Valid dependencies must be entered");
     }
-
-    return using;
   }
+  using["css"] = using.css;
 
   using.css.conditionally = function (condition, src, callback) {
     if (condition) {
@@ -926,32 +1048,14 @@
 
     return using;
   }
+  using["css"]["conditionally"] = using.css.conditionally;
 
   using.css.alias = function (alias, src) {
     //todo: this may cause conflicts if scripts and styles are similarly named. Fix it...
     return using.alias(alias, src);
   }
+  using["css"]["alias"] = using.css.alias;
 
-  //--------------------------------------------------------//
-
-
-  //testing area
-  //--------------------------------------------------------//
-  if (configuration.tests) {
-
-    using.alias("jQuery", "jquery-1.8.2.min");
-    using.alias("jQueryUI", "jquery-ui-1.8.24.min");
-
-    using.alias("jQueryAll", ["jQuery", "jQueryUI"]);
-
-    using.alias("SiteScripts", ["jQueryAll", "knockout-2.2.0"]);
-
-    var test = aliasMap.resolveAlias("SiteScripts");
-
-    using("jQueryAll");
-
-    if (global.console) global.console.log("Tests Complete");
-  }
   //--------------------------------------------------------//
 
 
@@ -962,4 +1066,4 @@
   if (configuration.initialStyleUsing) using.css(configuration.initialStyleUsing);
 
   return using;
-})(window || global, ((window || global).using ? using.configuration : null));
+})(window || global, ((window || global)["using"] ? using["configuration"] : null));
