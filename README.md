@@ -1,15 +1,20 @@
 UsingJs
 =======
 
-Javascript async script loader and dependency tracker. This is a sort of consolidation of existing script loaders 
-that I found acros the internet.
+Javascript async script loader and dependency tracker. I know that many others exist, 
+however nothing did quite what I wanted it to do, so I created this. I also tried to 
+consolidate all the various features that I liked from other script loaders into one.
 
-For now, here are the usages:
+<b>To include UsingJs on the page:</b><br\>
 
-on your page, include using.js<br/>
-&lt;script type="text/javascrpt" src="location/of/using.js" data-script-root="/script/root" data-using="'main'"&gt;&lt;/script&gt;<br/>
-the data-script-root attribute will specify where the root of the script directory is. The default is the server root ("/").<br/>
-the data-using attribute will run a using call on whatever is specified in it. This is the preferred entry point. <br/>
+<pre>
+  &lt;script type="text/javascrpt" src="location/of/using.js" data-script-root="/script/root" data-using="'main'"&gt;&lt;/script&gt;<br/>
+</pre>
+<b>Available attributes: </b><br/>
+<b>data-script-root:</b> will specify where the root of the script directory is. The default is the server root ("/").<br/>
+<b>data-using:</b> will run a using call on whatever is specified in it. This is the preferred entry point. <br/>
+<b>data-style-root:</b> will specify where the root of the style (css) directory is. The default is the server root ("/").<br/>
+<b>data-using-css:</b> will run a css using call on whatever is specified in it.<br/>
 <br/><br/>
 <b>Basic syntax:</b>
 <pre>
