@@ -100,7 +100,8 @@ Released under the MIT Licence
   //{
   //  src: "path/to/source",
   //  conditionally: evaluates.as.boolean,
-  //  type: "js" || "css"
+  //  type: "js" || "css",
+  //  noExtension: evaluates.as.boolean
   //}
 
   //convenience functions
@@ -142,7 +143,6 @@ Released under the MIT Licence
       if (!merger || merger.constructor !== Array) throw new Error("The merger must be an array.");
       if (merger) {
         for (index2 = 0; index2 < merger.length; index2++) {
-          //mergee[index2] = merger[index2];
           mergee.push(merger[index2]);
         }
       }
@@ -181,11 +181,13 @@ Released under the MIT Licence
   }
 
   //based off of typeof, but also discriminates between built in types and arrays of types
-  /** @param {Object} obj */
-  function getType(obj) {
+  /** @param {Object} obj 
+      @param {boolean=} excludeArrayType */
+  function getType(obj, excludeArrayType) {
     if (typeof (obj) === object) {
       //lots of things count as objects, so let's get a lil more specific
       if (obj.constructor === global["Array"]) {
+        if (excludeArrayType) return array;
         //an array where the inner type can be determined
         if (obj.length > 0) return array + "<" + getType(obj[0]) + ">";
         //an array where the inner type cannot be determined
@@ -209,6 +211,7 @@ Released under the MIT Licence
     }
   }
 
+  //detects the user's browser and version
   function detectBrowser() {
     if (!global.navigator) return { browser: null };
 
@@ -262,8 +265,8 @@ Released under the MIT Licence
     }
     configuration.styleRoot = styleRoot || "/";
 
-    if(initialUsing) configuration.initialUsing = eval.call(null, "(" + initialUsing + ")");
-    if(initialStyleUsing) configuration.initialStyleUsing = eval.call(null, "(" + initialStyleUsing + ")");
+    if(initialUsing) configuration.initialUsing = global["eval"]("(" + initialUsing + ")");
+    if(initialStyleUsing) configuration.initialStyleUsing = global["eval"]("(" + initialStyleUsing + ")");
   }
 
   //finds the script tag that's referencing "using.js"
@@ -301,8 +304,9 @@ Released under the MIT Licence
   /**
     @param {string} src
     @param {string} type
+    @param {boolean=} noExtension
   */
-  function resolveSourceLocation(src, type) {
+  function resolveSourceLocation(src, type, noExtension) {
     //for simplicity's sake, I'm assuming src is just a single string
     var retVal = "" + src;
     if(isCrossServerLocation(retVal)) {
@@ -310,7 +314,7 @@ Released under the MIT Licence
       return retVal;
     } else {
       //looks like a relative path. Make sure the script root and type are included.
-      if(retVal.substr(retVal.length - type.length) !== type) {
+      if(!noExtension && retVal.substr(retVal.length - type.length) !== type) {
         //type is not already included, add it
         retVal += "." + type;
       }
@@ -349,6 +353,43 @@ Released under the MIT Licence
     }
   }
 
+  /** @param {string} src
+      @param {string} type */
+  function ensureHasType(src, type) {
+    //make sure the last characters in the src are a '.' followed by the type
+    if (src.substr(src.length - (type.length + 1), type.length + 1) !== ("." + type)) {
+      src += "." + type;
+    }
+    return src;
+  }
+
+  //make sure that a given source is set up to be css
+  function fixSourceForCss(src) {
+    var index;
+
+    switch (getType(src, true)) {
+      case string:
+        src = ensureHasType(src, css);
+        break;
+
+      case dependency:
+        if (!src["noExtension"]) {
+          src["src"] = ensureHasType(src["src"], css);
+        }
+        src["type"] = css;
+        break;
+
+      case array:
+        for (index = src.length - 1; index >= 0; index--) {
+          src[index] = fixSourceForCss(src[index]);
+        }
+        break;
+
+    }
+    
+    return src;
+  }
+
   //--------------------------------------------------------//
 
 
@@ -381,39 +422,35 @@ Released under the MIT Licence
     addAlias: function (alias, src) {
       if (getType(alias) !== string) throw new Error("The alias must be a string.");
 
-      //if the alias is the same as the source what's the point?
-      if (alias === src) return this;
+      //this would cause infinite recursion
+      if (alias === src) throw new Error("Mapping to an equivalently named alias is not allowed.");
 
-      var index;
+      var index, srcType = getType(src, true);
+
+      if (srcType === dependency && alias === src["src"]) {
+        //this would cause infinite recursion
+        throw new Error("Mapping to an equivalently named alias is not allowed.");
+      }
 
       if (!this.map[alias]) {
         //no map previously existed for this alias
         this.map[alias] = [];
       }
 
-      switch (getType(src)) {
+      switch (srcType) {
         case string:
           //adding a single string map
           this.map[alias].push(src);
           break;
         case dependency:
           //adding a single map from a "dependency"
-          if (src.conditionally === undefined || src.conditionally) {
-            this.map[alias].push(src.src);
+          if (src["conditionally"] === undefined || src["conditionally"]) {
+            this.map[alias].push(fixSourceForCss(src["src"]));
           }
           break;
-        case arrayOfString:
-          //adding a list of string maps
-          for (index = 0; index < src.length; index++) {
-            this.map[alias].push(src[index]);
-          }
-          break;
-        case arrayOfDependency:
-          //adding a list of "dependency" entries
-          for (index = 0; index < src.length; index++) {
-            if (src[index].conditionally === undefined || src[index].conditionally) {
-              this.map[alias].push(src[index].src);
-            }
+        case array:
+          for (index = src.length - 1; index >= 0; index--) {
+            this.addAlias(alias, src[index]);
           }
           break;
       }
@@ -426,7 +463,7 @@ Released under the MIT Licence
 
       var sources = [], index;
 
-      switch (getType(alias)) {
+      switch (getType(alias, true)) {
         case string:
           //resolving a single string
           if (this.map[alias]) {
@@ -437,22 +474,13 @@ Released under the MIT Licence
           break;
         case dependency:
           //resolving a single "dependency"
-          if (alias.conditionally === undefined || alias.conditionally) {
+          if (alias["conditionally"] === undefined || alias["conditionally"]) {
             merge(sources, this.resolveAlias(alias.src));
           }
           break;
-        case arrayOfString:
-          //resolvig an array of strings
-          for (index = 0; index < alias.length; index++) {
+        case array:
+          for (index = alias.length - 1; index >= 0; index--) {
             merge(sources, this.resolveAlias(alias[index]));
-          }
-          break;
-        case arrayOfDependency:
-          //resolving an array of "dependency" objects
-          for (index = 0; index < alias.length; index++) {
-            if (alias[index].conditionally === undefined || alias[index].conditionally) {
-              merge(sources, this.resolveAlias(alias[index].src));
-            }
           }
           break;
         default:
@@ -609,43 +637,6 @@ Released under the MIT Licence
     },
 
     /** 
-      @protected
-      @param {Dependency} dep
-    */
-    locate: function (dep) {
-      this.searched = true;
-
-      if (this.matches(dep)) {
-        //found it, return the reference
-        return this;
-      } else {
-        var index, result;
-        //check through this file's dependencies
-        for (index = 0; index < this.dependsOn.length; index++) {
-          if (!this.dependsOn[index].searched) {
-            result = this.dependsOn[index].locate(dep);
-            if (result) {
-              //dependency was found, return it
-              return result;
-            }
-          }
-        }
-        //didn't find the dependency in any of the things this file depends on, let's check in files that depend on this file
-        for (index = 0; index < this.dependencyOf.length; index++) {
-          if (!this.dependencyOf[index].searched) {
-            result = this.dependencyOf[index].locate(dep);
-            if (result) {
-              return result;
-            }
-          }
-        }
-      }
-
-      //if you got here, we couldn't find it anywhere in the structure.
-      return null;
-    },
-
-    /** 
       @protected 
       @param {Dependency} dep
     */
@@ -689,10 +680,7 @@ Released under the MIT Licence
 
           //now remove the unknown dependency from the inner dependency's observing dependencies list and add this one
           dependency.removeDependencyOn(dependentOn);
-
         }
-
-        //merge(_this.dependentOn, storedDependencies);
 
         //move all associated callbacks to this dependency
         for (index2 = dependency.resolutionCallbacks.length - 1; index2 >= 0; index2--) {
@@ -715,6 +703,7 @@ Released under the MIT Licence
       _this.status = loading;
 
       if (_this.type === js) {
+        //using a script element
         _this.requestObj = document.createElement("script");
         _this.requestObj.src = resolveSourceLocation(_this.src, _this.type);
         _this.requestObj.type = "text/javascript";
@@ -722,6 +711,7 @@ Released under the MIT Licence
         _this.requestObj.async = true;
 
       } else if (_this.type === css) {
+        //using a link element
         _this.requestObj = document.createElement("link");
         _this.requestObj.type = "text/css";
         _this.requestObj.href = resolveSourceLocation(_this.src, _this.type);
@@ -749,6 +739,7 @@ Released under the MIT Licence
         }, true);
       }
 
+      //just appending whichever element to the head of the page
       document.getElementsByTagName("head")[0].appendChild(this.requestObj);
     },
 
@@ -822,15 +813,13 @@ Released under the MIT Licence
 
         switch (getType(dep)) {
           case string:
-            //todo: implement me!
+            newDependency = new Dependency(dep, js);
+            newDependency.init();
+            this._dependencies[dep] = newDependency;
             break;
 
           case dependency:
             this._dependencies[dep.src] = dep;
-            break;
-
-          case arrayOfString:
-            //todo: implement me!
             break;
         }
       }
@@ -910,15 +899,14 @@ Released under the MIT Licence
         /** @type {boolean} */ initialUsing = dependencyMap.empty();
 
 
-    switch (getType(src)) {
+    switch (getType(src, true)) {
       case "function":
         //if src is a function, then this is an "all ready" shortcut
         return using.ready(src);
 
       case string:
       case dependency:
-      case arrayOfString:
-      case arrayOfDependency:
+      case array:
         //make sure to get all sources from aliases
         sourceList = aliasMap.resolveAlias(src);
         break;
@@ -948,7 +936,6 @@ Released under the MIT Licence
         dep.init();
       }
       dependencies.push(dep);
-      //usingDep.dependOn(dep);
     }
     
     if (executingDependency) {
@@ -1000,11 +987,7 @@ Released under the MIT Licence
   using["conditionally"] = using.conditionally;
 
   using.alias = function (alias, src) {
-    var existingAlias = aliasMap.resolveAlias(alias);
-
-    if (existingAlias.length === 1 && existingAlias[0] === alias) {
-      aliasMap.addAlias(alias, src);
-    }
+    aliasMap.addAlias(alias, src);
 
     return using;
   }
@@ -1013,25 +996,14 @@ Released under the MIT Licence
   using.css = function (src, callback) {
     var index;
 
-    switch (getType(src)) {
+    switch (getType(src, true)) {
       case string:
-        return using(src + "." + css, callback);
-
       case dependency:
-        src.src += "." + css;
-        src.type = css;
-        return using(src, callback);
+        return using(fixSourceForCss(src), callback);
 
-      case arrayOfString:
-        for (index = 0; index < src.length; index++) {
-          src[index] += "." + css;
-        }
-        return using(src, callback);
-
-      case arrayOfDependency:
-        for (index = 0; index < src.length; index++) {
-          src[index].src += "." + css;
-          src[index].type = css;
+      case array:
+        for (index = src.length - 1; index >= 0; index--) {
+          src[index] = fixSourceForCss(src[index]);
         }
         return using(src, callback);
 
@@ -1051,8 +1023,8 @@ Released under the MIT Licence
   using["css"]["conditionally"] = using.css.conditionally;
 
   using.css.alias = function (alias, src) {
-    //todo: this may cause conflicts if scripts and styles are similarly named. Fix it...
-    return using.alias(alias, src);
+    //now going to make sure that it's known to be css in particular
+    return using.alias(alias, fixSourceForCss(src));
   }
   using["css"]["alias"] = using.css.alias;
 
