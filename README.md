@@ -34,10 +34,9 @@ Well that's simple enough. How about something more helpful?<br/>
 <br/>
 <b>Conditionals:</b>
 <pre>
-  using.css.conditionally("IEFix", browserName === "MSIE");
+  using.css.conditionally(browserName === "MSIE", "IeStyles");
 
-  using.conditionally("main", browserName !== "MSIE")
-       .conditionally("main-ie-proof", browserName === "MSIE");
+  using.conditionally(!window.JSON, "JsonShim");
 </pre>
      
 <br/><br/>
