@@ -40,7 +40,7 @@ Well that's simple enough. How about something more helpful?<br/>
 </pre>
      
 <br/><br/>
-Spiffy. Now what if I want to use more than one file at a time?<br/>
+Spiffy. What if my script depends on multiple other scripts?<br/>
 <br/>
 <b>Using lists:</b>
 <pre>
