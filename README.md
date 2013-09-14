@@ -77,6 +77,12 @@ Assume there are three files, A.js, B.js, and C.js<br/>
   console.log("in A");
   using("B", function() {
     console.log("in A's callback");
+    function A() {}
+    A.prototype = new B();
+    
+    var test = new A();
+    console.log(test instanceof B);
+    console.log(test instanceof C);
   });
 </pre>
 <br/>
@@ -86,6 +92,8 @@ Assume there are three files, A.js, B.js, and C.js<br/>
   console.log("in B");
   using("C", function() {
     console.log("in B's callback");
+    function B() {}
+    B.prototype = new C();
   });
 </pre>
 <br/>
@@ -93,6 +101,9 @@ Assume there are three files, A.js, B.js, and C.js<br/>
 <b>C.js:</b>
 <pre>
   console.log("in C");
+  
+  function C() {}
+  C.prototype = {}
 </pre>
 <br/>
 <b>The output would end up being:</b>
@@ -102,6 +113,8 @@ Assume there are three files, A.js, B.js, and C.js<br/>
   in C
   in B's callback
   in A's callback
+  true
+  true
 </pre>
 <br/>
 As you see, file dependencies will resolve themselves without the need to pre-register anything.
