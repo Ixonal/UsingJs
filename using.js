@@ -979,7 +979,14 @@ Released under the MIT Licence
       dep = dependencyMap.locateDependency(sourceList[index]);
       if (!dep) {
         //no existing entry for this source file, create one
-        dep = new Dependency(sourceList[index], getUsingType(sourceList[index]));
+        switch (getType(sourceList[index], true)) {
+          case string:
+            dep = new Dependency(sourceList[index], getUsingType(sourceList[index]));
+            break;
+          case dependency:
+            dep = new Dependency(sourceList[index].src, getUsingType(sourceList[index]));
+            break;
+        }
         dependencyMap.addDependency(dep);
         dep.init();
       }
