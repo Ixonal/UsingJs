@@ -86,7 +86,7 @@ Released under the MIT Licence
   loaded = 3,
   /** @type {number} */
   resolved = 4,
-    /** @type {number} */
+  /** @type {number} */
   withdrawn = 5,
   /** @type {number} */
   destroyed = 6,
@@ -101,7 +101,8 @@ Released under the MIT Licence
   //  src: "path/to/source",
   //  conditionally: evaluates.as.boolean,
   //  type: "js" || "css",
-  //  noExtension: evaluates.as.boolean
+  //  noExtension: evaluates.as.boolean,
+  //  using: "string" || new dependency
   //}
 
   //convenience functions
@@ -209,6 +210,14 @@ Released under the MIT Licence
       //type known to typeof
       return typeof (obj);
     }
+  }
+
+  function dependencyEquals(dep1, dep2) {
+    return dep1.src === dep2.src &&
+           dep1.type === dep2.type &&
+           dep1.conditionally === dep2.conditionally &&
+           dep1.using === dep2.using &&
+           dep1.noExtension === dep2.noExtension;
   }
 
   //detects the user's browser and version
@@ -405,16 +414,60 @@ Released under the MIT Licence
   var aliasMap = {
     /**
       @private
-      @type {Object.<string>} 
+      @type {Object.<object>} 
     */
     map: {},
 
-    /** @protected */
-    locateAlias: function (src) {
-      for (var index in this._aliases) {
-        if (this._aliases[index] === src) return index;
-      }
+    ///** @protected */
+    //locateAlias: function (src) {
+    //  for (var index in this._aliases) {
+    //    if (this._aliases[index] === src) return index;
+    //  }
 
+    //  return null;
+    //},
+
+    //will look through all dependencies to see if it can find a matching one
+    /** @protected */
+    locateDependency: function (dep) {
+      var index, index2, depType = getType(dep, true);
+
+      //note, this is O(N * M), but the sets should be fairly small, so it shouldn't cause an issue
+      for (index in this.map) {
+        for (index2 = this.map[index].length - 1; index2 >= 0; index2--) {
+          switch (depType) {
+            case string:
+              switch (getType(this.map[index][index2], true)) {
+                case string:
+                  if (this.map[index][index2] === dep) {
+                    return this.map[index][index2];
+                  }
+                  break;
+                case dependency:
+                  if (this.map[index][index2].src === dep) {
+                    return this.map[index][index2];
+                  }
+                  break;
+              }
+              break;
+
+            case dependency:
+              switch (getType(this.map[index][index2], true)) {
+                case string:
+                  if (this.map[index][index2] === dep.src) {
+                    return this.map[index][index2];
+                  }
+                  break;
+                case dependency:
+                  if (dependencyEquals(this.map[index][index2], dep)) {
+                    return this.map[index][index2];
+                  }
+                  break;
+              }
+              break;
+          }
+        }
+      }
       return null;
     },
 
@@ -422,38 +475,33 @@ Released under the MIT Licence
     addAlias: function (alias, src) {
       if (getType(alias) !== string) throw new Error("The alias must be a string.");
 
+      var index, srcType = getType(src, true), tmp;
+
+
       //this would cause infinite recursion
       if (alias === src) throw new Error("Mapping to an equivalently named alias is not allowed.");
 
-      var index, srcType = getType(src, true);
 
       if (srcType === dependency && alias === src["src"]) {
         //this would cause infinite recursion
         throw new Error("Mapping to an equivalently named alias is not allowed.");
       }
 
-      if (!this.map[alias]) {
-        //no map previously existed for this alias
-        this.map[alias] = [];
+      switch (srcType) {
+        case array:
+          tmp = [];
+          for (index = src.length - 1; index >= 0; index--) {
+            merge(tmp, this.resolveAlias(src[index]));
+          }
+          break;
+
+        case string:
+        case dependency:
+          tmp = this.resolveAlias(src);
+          break;
       }
 
-      switch (srcType) {
-        case string:
-          //adding a single string map
-          this.map[alias].push(src);
-          break;
-        case dependency:
-          //adding a single map from a "dependency"
-          if (src["conditionally"] === undefined || src["conditionally"]) {
-            this.map[alias].push(fixSourceForCss(src["src"]));
-          }
-          break;
-        case array:
-          for (index = src.length - 1; index >= 0; index--) {
-            this.addAlias(alias, src[index]);
-          }
-          break;
-      }
+      this.map[alias] = tmp;
 
       return this;
     },
@@ -470,13 +518,13 @@ Released under the MIT Licence
             for (index = 0; index < this.map[alias].length; index++) {
               merge(sources, this.resolveAlias(this.map[alias][index]));
             }
+          } else {
+            return [alias];
           }
           break;
         case dependency:
           //resolving a single "dependency"
-          if (alias["conditionally"] === undefined || alias["conditionally"]) {
-            merge(sources, this.resolveAlias(alias.src));
-          }
+          return [alias];
           break;
         case array:
           for (index = alias.length - 1; index >= 0; index--) {
