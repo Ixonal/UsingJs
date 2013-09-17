@@ -102,7 +102,7 @@ Released under the MIT Licence
   //  conditionally: evaluates.as.boolean,
   //  type: "js" || "css",
   //  noExtension: evaluates.as.boolean,
-  //  using: "string" || new dependency
+  //  dependsOn: "path/to/other/source" || new dependency
   //}
 
   //convenience functions
@@ -216,7 +216,7 @@ Released under the MIT Licence
     return dep1.src === dep2.src &&
            dep1.type === dep2.type &&
            dep1.conditionally === dep2.conditionally &&
-           dep1.using === dep2.using &&
+           dep1.dependsOn === dep2.dependsOn &&
            dep1.noExtension === dep2.noExtension;
   }
 
@@ -540,9 +540,10 @@ Released under the MIT Licence
   }
 
   /** Constructor */
-  function Dependency(src, type) {
+  function Dependency(src, type, noExtension) {
     this.src = src;
     this.type = type || js;
+    this.noExtension = noExtension;
     this.resolutionCallbacks = [];
     this.dependencyFor = [];
     this.dependentOn = [];
@@ -553,6 +554,8 @@ Released under the MIT Licence
     src: null,                  //location of this dependency
     /** @protected */
     type: js,                   //the type of this dependency
+    /** @protected */
+    noExtension: false,         //whether or not to include an extension in the source for this dependency
     /** @protected */
     searched: false,            //whether or not this node has been searched through
     /** @protected */
@@ -793,7 +796,7 @@ Released under the MIT Licence
 
     /** @protected */
     init: function () {
-      if (this.status !== uninitiated) throw new Error("Attempting to initiate a previously initiated dependency.");
+      if (this.status !== uninitiated) return; //throw new Error("Attempting to initiate a previously initiated dependency.");
 
       var _this = this;
 
@@ -938,13 +941,16 @@ Released under the MIT Licence
   //public access
   //--------------------------------------------------------//
   function using(src, callback) {
-    var /** @type {Array.<string>} */ sourceList, 
-        /** @type {number} */ index,
-        /** @type {Dependency} */ usingDep,
+    var /** @type {Array.<string>} */     sourceList, 
+        /** @type {number} */             index,
+        /** @type {number} */             index2,
+        /** @type {Dependency} */         usingDep,
         /** @type {Array.<Dependency>} */ dependencies,
-        /** @type {Dependency} */ dep,
-        /** @type {Dependency} */ executingDependency,
-        /** @type {boolean} */ initialUsing = dependencyMap.empty();
+        /** @type {Dependency} */         dep,
+        /** @type {Dependency} */         executingDependency,
+        /** @type {boolean} */            delayInit,
+        /** @type {boolean} */            initialUsing = dependencyMap.empty(),
+        /** @type {Dependency} */         hdnDepRef = arguments[2];
 
 
     switch (getType(src, true)) {
@@ -969,7 +975,11 @@ Released under the MIT Licence
       //initially, we're going to create a base "page" type dependency
       executingDependency = new Dependency(page, page);
       executingDependency.init();
+    } else if (hdnDepRef) {
+      //sneaky sneaky...
+      executingDependency = hdnDepRef;
     } else {
+      //earlier versions of IE may not execute scripts in the right order, but they do mark a script as interactive
       if (configuration.browser.name === ie && configuration.browser.version <= 10) {
         executingDependency = dependencyMap.locateInteractiveDependency();
       }
@@ -981,14 +991,29 @@ Released under the MIT Licence
         //no existing entry for this source file, create one
         switch (getType(sourceList[index], true)) {
           case string:
-            dep = new Dependency(sourceList[index], getUsingType(sourceList[index]));
+            delayInit = false;
+            dep = new Dependency(sourceList[index], getUsingType(sourceList[index]), false);
             break;
           case dependency:
-            dep = new Dependency(sourceList[index].src, getUsingType(sourceList[index]));
+            delayInit = sourceList[index].dependsOn;
+            dep = new Dependency(sourceList[index].src, getUsingType(sourceList[index]), sourceList[index].noExtension);
             break;
         }
         dependencyMap.addDependency(dep);
-        dep.init();
+        if (delayInit) {
+          //this dependency is dependant on another dependency...
+          //leave the dependency uninitialized, and run a using call on the other 
+          //dependency, with a callback that initializes the original dependency.
+          (function () {
+            var myDep = dep;
+            using(sourceList[index].dependsOn, function () {
+              myDep.init();
+            }, myDep);
+          })();
+        } else {
+          //initializing normally
+          dep.init();
+        }
       }
       dependencies.push(dep);
     }
@@ -996,9 +1021,19 @@ Released under the MIT Licence
     if (executingDependency) {
       //in this case, we know up front what the base file is, so make it depend on the new dependencies
       for (index = dependencies.length - 1; index >= 0; index--) {
+        //if (hdnDepRef) {
+        //  hdnDepRef.dependOn(dependencies[index]);
+        //  dependencies[index].addResolutionCallback(callback);
+        //} else {
         executingDependency.dependOn(dependencies[index]);
+        if (hdnDepRef) {
+          dependencies[index].addResolutionCallback(callback);
+        }
+        //}
       }
-      if (callback) executingDependency.addResolutionCallback(callback);
+      if (callback && !hdnDepRef) {
+        executingDependency.addResolutionCallback(callback);
+      }
     } else {
       //we don't currently know what the base file is, so create a fake one and have it get resolved later
       usingDep = new Dependency(usingContext + usingIndex++, usingContext);
