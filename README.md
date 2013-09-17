@@ -124,8 +124,18 @@ Anything else I should know?<br/>
 <b>Dependencies may be described using either a string (as above) or an object of the following form:</b>
 <pre>
   {
-    src: "Test", //source string as above                                 (string, required)
-    type: "js or css", //the type of file                                 (string, optional)
-    conditionally: condition //whether or not to register this dependency (boolean, optional)
+    src: "Test", //source string as above                                  (string, required)
+    type: "js or css", //the type of file                                  (string, optional)
+    conditionally: condition, //whether or not to register this dependency (boolean, optional)
+    dependsOn: "Something" //A file on which this dependency is dependant  (string or dependency, optional)
   }
+</pre>
+
+<b>Of Note:</b><br/>
+The "dependsOn" property, as defined above, allows defining dependency chains for libraries which don't 
+use this library. A good example of the use of this is including both jQuery and jQuery UI.
+<pre>
+  using(["jQuery", { src: "jQueryUI", dependsOn: "jQuery" }], function() {
+    //occurs after jQuery and then jQueryUI are loaded
+  });
 </pre>
