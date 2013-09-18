@@ -1,6 +1,6 @@
 /*
 UsingJs script loader and dependency tracker
-Copyright 2013 Benjamin McGregor
+Copyright 2013 Benjamin McGregor (Ixonal)
 Released under the MIT Licence
 */
 
