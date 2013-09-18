@@ -92,6 +92,8 @@ Released under the MIT Licence
   destroyed = 6,
   /** @type {number} */
   complete = 7,
+  /** @type {number} */
+  error = 8,
   
   /** @type {string} */
   interactive = "interactive";
@@ -213,11 +215,11 @@ Released under the MIT Licence
   }
 
   function dependencyEquals(dep1, dep2) {
-    return dep1.src === dep2.src &&
-           dep1.type === dep2.type &&
-           dep1.conditionally === dep2.conditionally &&
-           dep1.dependsOn === dep2.dependsOn &&
-           dep1.noExtension === dep2.noExtension;
+    return dep1["src"] === dep2["src"] &&
+           dep1["type"] === dep2["type"] &&
+           dep1["conditionally"] === dep2["conditionally"] &&
+           dep1["dependsOn"] === dep2["dependsOn"] &&
+           dep1["noExtension"] === dep2["noExtension"];
   }
 
   //detects the user's browser and version
@@ -276,6 +278,10 @@ Released under the MIT Licence
 
     if(initialUsing) configuration.initialUsing = global["eval"]("(" + initialUsing + ")");
     if(initialStyleUsing) configuration.initialStyleUsing = global["eval"]("(" + initialStyleUsing + ")");
+  }
+
+  function emitError(err) {
+    if (global["console"]) global["console"]["error"](err);
   }
 
   //finds the script tag that's referencing "using.js"
@@ -508,7 +514,6 @@ Released under the MIT Licence
 
     /** @protected */
     resolveAlias: function (alias) {
-
       var sources = [], index;
 
       switch (getType(alias, true)) {
@@ -756,17 +761,24 @@ Released under the MIT Licence
       if (_this.type === js) {
         //using a script element
         _this.requestObj = document.createElement("script");
-        _this.requestObj.src = resolveSourceLocation(_this.src, _this.type);
-        _this.requestObj.type = "text/javascript";
-        _this.requestObj.defer = false;
-        _this.requestObj.async = true;
+        _this.requestObj.setAttribute("src", resolveSourceLocation(_this.src, _this.type, _this.noExtension));
+        _this.requestObj.setAttribute("type", "text/javascript");
+        _this.requestObj.setAttribute("defer", "false");
+        _this.requestObj.setAttribute("async", "true");
+        //_this.requestObj.src = resolveSourceLocation(_this.src, _this.type);
+        //_this.requestObj.type = "text/javascript";
+        //_this.requestObj.defer = false;
+        //_this.requestObj.async = true;
 
       } else if (_this.type === css) {
         //using a link element
         _this.requestObj = document.createElement("link");
-        _this.requestObj.type = "text/css";
-        _this.requestObj.href = resolveSourceLocation(_this.src, _this.type);
-        _this.requestObj.rel = "stylesheet";
+        _this.requestObj.setAttribute("type", "text/css");
+        _this.requestObj.setAttribute("href", resolveSourceLocation(_this.src, _this.type, _this.noExtension));
+        _this.requestObj.setAttribute("rel", "stylesheet");
+        //_this.requestObj.type = "text/css";
+        //_this.requestObj.href = resolveSourceLocation(_this.src, _this.type);
+        //_this.requestObj.rel = "stylesheet";
 
 
       } else {
@@ -783,10 +795,26 @@ Released under the MIT Licence
             _this.resolve();
           }
         }
+        //global.onerror = function (msg, url, lineNum) {
+        //  emitError("test");
+        //};
+        if (_this.requestObj.attachEvent) {
+          _this.requestObj.attachEvent("onerror", function () {
+            _this.status = error;
+            emitError("UsingJs: An error has occurred when loading " + _this.src);
+            _this.notify();
+          });
+        }
       } else {
         _this.requestObj.addEventListener("load", function () {
           _this.status = loaded;
           _this.resolve();
+        }, true);
+
+        _this.requestObj.addEventListener("error", function () {
+          _this.status = error;
+          emitError("UsingJs: An error has occurred when loading " + _this.src);
+          _this.notify();
         }, true);
       }
 
@@ -917,7 +945,7 @@ Released under the MIT Licence
       //test to see if all known dependencies have been resolved
       for (index in this._dependencies) {
         status = this._dependencies[index].status;
-        if (status !== complete && status !== withdrawn && status !== destroyed) {
+        if (status !== complete && status !== withdrawn && status !== destroyed && status !== error) {
           return false;
         }
       }
@@ -995,8 +1023,8 @@ Released under the MIT Licence
             dep = new Dependency(sourceList[index], getUsingType(sourceList[index]), false);
             break;
           case dependency:
-            delayInit = sourceList[index].dependsOn;
-            dep = new Dependency(sourceList[index].src, getUsingType(sourceList[index]), sourceList[index].noExtension);
+            delayInit = sourceList[index]["dependsOn"];
+            dep = new Dependency(sourceList[index]["src"], getUsingType(sourceList[index]), sourceList[index]["noExtension"]);
             break;
         }
         dependencyMap.addDependency(dep);
@@ -1006,7 +1034,7 @@ Released under the MIT Licence
           //dependency, with a callback that initializes the original dependency.
           (function () {
             var myDep = dep;
-            using(sourceList[index].dependsOn, function () {
+            using(sourceList[index]["dependsOn"], function () {
               myDep.init();
             }, myDep);
           })();
