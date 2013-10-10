@@ -139,3 +139,32 @@ use this library. A good example of the use of this is including both jQuery and
     //occurs after jQuery and then jQueryUI are loaded
   });
 </pre>
+<br/><br/>
+<b>Configurations:</b><br/>
+There are certain global options that can be configured:
+<pre>
+  {
+    noConflict: false, //boolean, whether or not using is inserted into the global scope
+    scriptRoot: "/", //string, default script root
+    styleRoot: "/", //string, default style root
+    cached: true //boolean, whether or not to cache the source files
+  }
+</pre>
+These settings can be set by assigning an object to the global variable using.configuration before 
+the library has been included, or calling the using.config function on an object after the library 
+has been included.
+<pre>
+  //before including the library
+  using = {
+    config: {
+      scriptRoot: "/Scripts",
+      cached: false
+    }
+  }
+  
+  //after including the library
+  using.config({
+    scriptRoot: "/Scripts",
+    cached: false
+  });
+</pre>
