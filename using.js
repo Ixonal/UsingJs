@@ -2,6 +2,7 @@
 UsingJs script loader and dependency tracker
 Copyright 2013 Benjamin McGregor (Ixonal)
 Released under the MIT Licence
+http://opensource.org/licenses/MIT
 */
 
 (function (/** @type {Window} */global, configuration, undefined) {
@@ -10,11 +11,13 @@ Released under the MIT Licence
   //default configuration settings
   var defaultConfiguration = {
     /** @type {boolean} */
-    noConflict: false,
+    "noConflict": false,
     /** @type {string} */
-    scriptRoot: "/",
+    "scriptRoot": "/",
     /** @type {string} */
-    styleRoot: "/"
+    "styleRoot": "/",
+    /** @type {boolean} */
+    "cached": true
   },
 
   /** @type {Array.<Dependency>} */
@@ -224,9 +227,9 @@ Released under the MIT Licence
 
   //detects the user's browser and version
   function detectBrowser() {
-    if (!global.navigator) return { browser: null };
+    if (!global.navigator) return { "browser": null };
 
-    var browser = {
+    var browser = /** @dict */ {
       name: unknown,
       version: null
     }, results;
@@ -245,13 +248,13 @@ Released under the MIT Licence
       browser.version = +results[1];
     }
 
-    return { browser: browser };
+    return { "browser": browser };
   }
 
   //configures the script
   /** @param {Object} options */
   function configure(options) {
-    configuration = extend({}, defaultConfiguration, configuration, detectBrowser());
+    configuration = extend({}, defaultConfiguration, configuration, options, detectBrowser());
 
     var scriptTag = locateUsingScriptTag();
 
@@ -267,17 +270,17 @@ Released under the MIT Licence
       //make sure we have that ending / for later concatination
       scriptRoot += "/";
     }
-    configuration.scriptRoot = scriptRoot || "/";
+    configuration["scriptRoot"] = scriptRoot || "/";
 
     //set up the style root
     if (styleRoot && styleRoot.substr(styleRoot.length - 1, 1) !== "/") {
       //make sure we have that ending / for later concatination
       styleRoot += "/";
     }
-    configuration.styleRoot = styleRoot || "/";
+    configuration["styleRoot"] = styleRoot || "/";
 
-    if(initialUsing) configuration.initialUsing = global["eval"]("(" + initialUsing + ")");
-    if(initialStyleUsing) configuration.initialStyleUsing = global["eval"]("(" + initialStyleUsing + ")");
+    if(initialUsing) configuration["initialUsing"] = global["eval"]("(" + initialUsing + ")");
+    if(initialStyleUsing) configuration["initialStyleUsing"] = global["eval"]("(" + initialStyleUsing + ")");
   }
 
   function emitError(err) {
@@ -323,10 +326,11 @@ Released under the MIT Licence
   */
   function resolveSourceLocation(src, type, noExtension) {
     //for simplicity's sake, I'm assuming src is just a single string
-    var retVal = "" + src;
+    var retVal = "" + src,
+        timestamp = new Date().getTime();
     if(isCrossServerLocation(retVal)) {
       //the request is for another domain probly a CDN
-      return retVal;
+      return retVal + (!configuration["cached"] ? (retVal.indexOf("?") === -1 ? "?_t=" : "&_t=") + timestamp : "");
     } else {
       //looks like a relative path. Make sure the script root and type are included.
       if(!noExtension && retVal.substr(retVal.length - type.length) !== type) {
@@ -338,13 +342,21 @@ Released under the MIT Licence
         retVal = retVal.substr(1);
       }
 
+      if (!configuration["cached"]) {
+        if (retVal.indexOf("?") === -1) {
+          retVal += "?_t=" + timestamp;
+        } else {
+          retVal += "&_t=" + timestamp;
+        }
+      }
+
       //use the correct root directory
       switch (type) {
         case js:
-          return configuration.scriptRoot + retVal;
+          return configuration["scriptRoot"] + retVal;
 
         case css:
-          return configuration.styleRoot + retVal;
+          return configuration["styleRoot"] + retVal;
 
         default:
           return "/" + retVal;
@@ -424,14 +436,6 @@ Released under the MIT Licence
     */
     map: {},
 
-    ///** @protected */
-    //locateAlias: function (src) {
-    //  for (var index in this._aliases) {
-    //    if (this._aliases[index] === src) return index;
-    //  }
-
-    //  return null;
-    //},
 
     //will look through all dependencies to see if it can find a matching one
     /** @protected */
@@ -765,10 +769,6 @@ Released under the MIT Licence
         _this.requestObj.setAttribute("type", "text/javascript");
         _this.requestObj.setAttribute("defer", "false");
         _this.requestObj.setAttribute("async", "true");
-        //_this.requestObj.src = resolveSourceLocation(_this.src, _this.type);
-        //_this.requestObj.type = "text/javascript";
-        //_this.requestObj.defer = false;
-        //_this.requestObj.async = true;
 
       } else if (_this.type === css) {
         //using a link element
@@ -776,9 +776,6 @@ Released under the MIT Licence
         _this.requestObj.setAttribute("type", "text/css");
         _this.requestObj.setAttribute("href", resolveSourceLocation(_this.src, _this.type, _this.noExtension));
         _this.requestObj.setAttribute("rel", "stylesheet");
-        //_this.requestObj.type = "text/css";
-        //_this.requestObj.href = resolveSourceLocation(_this.src, _this.type);
-        //_this.requestObj.rel = "stylesheet";
 
 
       } else {
@@ -786,7 +783,7 @@ Released under the MIT Licence
       }
 
       //register event handlers
-      if (configuration.browser.name === ie && configuration.browser.version < 9) {
+      if (configuration["browser"]["name"] === ie && configuration["browser"]["version"] < 9) {
         _this.requestObj.onreadystatechange = function () {
 
           if (_this.requestObj.readyState === "complete" || _this.requestObj.readyState === "loaded") {
@@ -1008,7 +1005,7 @@ Released under the MIT Licence
       executingDependency = hdnDepRef;
     } else {
       //earlier versions of IE may not execute scripts in the right order, but they do mark a script as interactive
-      if (configuration.browser.name === ie && configuration.browser.version <= 10) {
+      if (configuration["browser"]["name"] === ie && configuration["browser"]["version"] <= 10) {
         executingDependency = dependencyMap.locateInteractiveDependency();
       }
     }
