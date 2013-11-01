@@ -610,7 +610,7 @@ http://opensource.org/licenses/MIT
     /** @protected */
     notify: function () {
       //return if not currently resolved
-      if (this.status !== resolved) return;
+      if (this.status !== resolved && this.status !== error) return;
 
       //a dependency resolved, test to see if this one can resolve
       var index, ready = this.isReady(); 
@@ -635,6 +635,10 @@ http://opensource.org/licenses/MIT
           this.dependencyFor[index].notify();
         }
 
+        if (dependencyMap.testCompleteness()) {
+          allReady();
+        }
+      } else if (this.status === error) {
         if (dependencyMap.testCompleteness()) {
           allReady();
         }
@@ -756,9 +760,41 @@ http://opensource.org/licenses/MIT
       if(this.status !== destroyed) _this.notify();
     },
 
+    error: function () {
+      var _this = this, index, dep, parent = arguments[0], message;
+
+      _this.status = error;
+
+      message = "UsingJs: An error has occurred when loading " + _this.src;
+      if(parent) message += " - dependency " + parent.src + " registered an error";
+      emitError(message);
+
+      for (index = _this.dependencyFor.length - 1; index >= 0; index--) {
+        dep = _this.dependencyFor[index];
+        if (dep.status !== error && dep.status !== withdrawn && dep.status !== complete) {
+          dep.error(_this);
+        }
+      }
+
+      _this.notify();
+    },
+
     /** @protected */
     load: function () {
-      var _this = this;
+      var _this = this, index, dep;
+
+      if (this.status !== initiated) return;
+
+      //first, check to make sure that none of the files this file is dependent on are not loaded
+      for (index = this.dependentOn.length - 1; index >= 0; index--) {
+        dep = this.dependentOn[index];
+        if (dep.status === loading || dep.status === initiated) return;
+
+        if (dep.status === error) {
+          //a dependency had an error, so this file should have an error
+          dep.error();
+        }
+      }
 
       _this.status = loading;
 
@@ -797,9 +833,7 @@ http://opensource.org/licenses/MIT
         //};
         if (_this.requestObj.attachEvent) {
           _this.requestObj.attachEvent("onerror", function () {
-            _this.status = error;
-            emitError("UsingJs: An error has occurred when loading " + _this.src);
-            _this.notify();
+            _this.error();
           });
         }
       } else {
@@ -808,15 +842,13 @@ http://opensource.org/licenses/MIT
           _this.resolve();
         }, true);
 
-        _this.requestObj.addEventListener("error", function () {
-          _this.status = error;
-          emitError("UsingJs: An error has occurred when loading " + _this.src);
-          _this.notify();
+        _this.requestObj.addEventListener("error", function (e) {
+          _this.error();
         }, true);
       }
 
       //just appending whichever element to the head of the page
-      document.getElementsByTagName("head")[0].appendChild(this.requestObj);
+        document.getElementsByTagName("head")[0].appendChild(this.requestObj);
     },
 
     /** @protected */
@@ -935,11 +967,15 @@ http://opensource.org/licenses/MIT
       }
     },
 
+    notifyAll: function() {
+
+    },
+
     /** @protected */
     testCompleteness: function () {
       var index, status;
       
-      //test to see if all known dependencies have been resolved
+      //test to see if all known dependencies are in a terminal state
       for (index in this._dependencies) {
         status = this._dependencies[index].status;
         if (status !== complete && status !== withdrawn && status !== destroyed && status !== error) {
@@ -951,12 +987,26 @@ http://opensource.org/licenses/MIT
     }
   }
 
-  var /** @type {Array.<function()>} */ readyCallbacks = [];
+  var /** @type {Array.<function()>} */ readyCallbacks = [], allReadyFired = false, poll;
 
   function allReady() {
+    if (allReadyFired) return;
+    allReadyFired = true;
     for (var index = 0; index < readyCallbacks.length; index++) {
       readyCallbacks[index]();
     }
+  }
+
+  //because events don't seem to be reliably firing in IE at times, I'm also going to poll
+  function startPolling() {
+    poll = setInterval(function () {
+      if (dependencyMap.testCompleteness()) {
+        if (!allReadyFired) {
+          allReady();
+        }
+        clearInterval(poll);
+      }
+    }, 200);
   }
 
   var /** @type {number} */ usingIndex = 0;
@@ -1026,14 +1076,17 @@ http://opensource.org/licenses/MIT
         }
         dependencyMap.addDependency(dep);
         if (delayInit) {
-          //this dependency is dependant on another dependency...
+          //this dependency is dependent on another dependency...
           //leave the dependency uninitialized, and run a using call on the other 
           //dependency, with a callback that initializes the original dependency.
           (function () {
-            var myDep = dep;
-            using(sourceList[index]["dependsOn"], function () {
-              myDep.init();
+            var myDep = dep,
+                dependsOn = sourceList[index]["dependsOn"];
+
+            using(dependsOn, function () {
+              myDep.load();
             }, myDep);
+            myDep.init();
           })();
         } else {
           //initializing normally
@@ -1046,15 +1099,10 @@ http://opensource.org/licenses/MIT
     if (executingDependency) {
       //in this case, we know up front what the base file is, so make it depend on the new dependencies
       for (index = dependencies.length - 1; index >= 0; index--) {
-        //if (hdnDepRef) {
-        //  hdnDepRef.dependOn(dependencies[index]);
-        //  dependencies[index].addResolutionCallback(callback);
-        //} else {
         executingDependency.dependOn(dependencies[index]);
         if (hdnDepRef) {
           dependencies[index].addResolutionCallback(callback);
         }
-        //}
       }
       if (callback && !hdnDepRef) {
         executingDependency.addResolutionCallback(callback);
@@ -1072,10 +1120,12 @@ http://opensource.org/licenses/MIT
       usingDep.init();
 
       if (!initialUsing) {
-        //this is the initial using call, so we should be coming from the html page itself, 
-        //and that will never need to be resolved.
         unknownDependencies.push(usingDep);
       }
+    }
+
+    if (configuration.browser.name === ie) {
+      startPolling();
     }
 
     return using;
