@@ -1124,7 +1124,7 @@ http://opensource.org/licenses/MIT
       }
     }
 
-    if (configuration.browser.name === ie) {
+    if (configuration["browser"]["name"] === ie) {
       startPolling();
     }
 
