@@ -17,7 +17,9 @@ http://opensource.org/licenses/MIT
     /** @type {string} */
     "styleRoot": "/",
     /** @type {boolean} */
-    "cached": true
+    "cached": true,
+    /** @type {number} */
+    "pollingTimeout": 200
   },
 
   /** @type {Array.<Dependency>} */
@@ -94,9 +96,11 @@ http://opensource.org/licenses/MIT
   /** @type {number} */
   destroyed = 6,
   /** @type {number} */
-  complete = 7,
+  finalizing = 7,
   /** @type {number} */
-  error = 8,
+  complete = 8,
+  /** @type {number} */
+  error = 9,
   
   /** @type {string} */
   interactive = "interactive";
@@ -536,6 +540,7 @@ http://opensource.org/licenses/MIT
           return [alias];
           break;
         case array:
+          if (alias.length === 0) return sources;
           for (index = alias.length - 1; index >= 0; index--) {
             merge(sources, this.resolveAlias(alias[index]));
           }
@@ -607,38 +612,45 @@ http://opensource.org/licenses/MIT
       this.status = destroyed;
     },
 
+    finalize: function () {
+      var _this = this, index;
+
+      _this.status = finalizing;
+
+      //notify anything this depends on
+      for (index = 0; index < _this.dependentOn.length; index++) {
+        _this.dependentOn[index].notify();
+      }
+
+      //run any resolution callbacks
+      for (index = 0; index < _this.resolutionCallbacks.length; index++) {
+        _this.resolutionCallbacks[index]();
+      }
+
+      this.status = complete;
+
+      //notify anything dependent on this
+      for (index = 0; index < _this.dependencyFor.length; index++) {
+        _this.dependencyFor[index].notify();
+      }
+
+      if (dependencyMap.testCompleteness()) {
+        allReady();
+      }
+    },
+
     /** @protected */
     notify: function () {
+      var _this = this;
       //return if not currently resolved
-      if (this.status !== resolved && this.status !== error) return;
+      if (_this.status !== resolved && _this.status !== error) return;
 
       //a dependency resolved, test to see if this one can resolve
-      var index, ready = this.isReady(); 
-
+      var index, ready = _this.isReady(); 
 
       if (ready) {
-        //looks like we're good to go, mark this dependency as complete
-        this.status = complete;
-
-        //notify anything this depends on
-        for (index = 0; index < this.dependentOn.length; index++) {
-          this.dependentOn[index].notify();
-        }
-
-        //run any resolution callbacks
-        for (index = 0; index < this.resolutionCallbacks.length; index++) {
-          this.resolutionCallbacks[index]();
-        }
-
-        //notify anything dependent on this
-        for (index = 0; index < this.dependencyFor.length; index++) {
-          this.dependencyFor[index].notify();
-        }
-
-        if (dependencyMap.testCompleteness()) {
-          allReady();
-        }
-      } else if (this.status === error) {
+        _this.finalize();
+      } else if (_this.status === error) {
         if (dependencyMap.testCompleteness()) {
           allReady();
         }
@@ -647,10 +659,11 @@ http://opensource.org/licenses/MIT
 
     /** @protected */
     isReady: function () {
-      if (this.status !== resolved && this.status !== complete) return false;
+      var _this = this;
+      if (_this.status !== resolved && _this.status !== complete) return false;
 
-      for (var index = this.dependentOn.length - 1; index >= 0; index--) {
-        if (!this.dependentOn[index].isReady()) return false;
+      for (var index = _this.dependentOn.length - 1; index >= 0; index--) {
+        if (!_this.dependentOn[index].isReady()) return false;
       }
 
       return true;
@@ -658,24 +671,26 @@ http://opensource.org/licenses/MIT
 
     /** @protected */
     dependOn: function (otherDep) {
+      var _this = this;
+
       //type checking
       if (!otherDep || otherDep.constructor !== Dependency) throw new Error("The other dependency must be a valid Dependency object.");
 
       //don't want to depend on ourselves, now do we?
-      if (this.matches(otherDep)) return;
+      if (_this.matches(otherDep)) return;
 
       //check to see if we already depend on the other dependency
-      var index = indexOfDependency(this.dependentOn, otherDep);
+      var index = indexOfDependency(_this.dependentOn, otherDep);
 
       //if not, depend on it
       if (index === -1) {
-        otherDep.dependencyFor.push(this);
-        this.dependentOn.push(otherDep);
+        otherDep.dependencyFor.push(_this);
+        _this.dependentOn.push(otherDep);
       }
 
       if (otherDep.status === resolved) {
         //other dependency is already resolved, notify self 
-        this.notify();
+        _this.notify();
       }
     },
 
@@ -757,7 +772,7 @@ http://opensource.org/licenses/MIT
 
       _this.status = resolved;
 
-      if(this.status !== destroyed) _this.notify();
+      if(_this.status !== destroyed) _this.notify();
     },
 
     error: function () {
@@ -786,8 +801,8 @@ http://opensource.org/licenses/MIT
       if (this.status !== initiated) return;
 
       //first, check to make sure that none of the files this file is dependent on are not loaded
-      for (index = this.dependentOn.length - 1; index >= 0; index--) {
-        dep = this.dependentOn[index];
+      for (index = _this.dependentOn.length - 1; index >= 0; index--) {
+        dep = _this.dependentOn[index];
         if (dep.status === loading || dep.status === initiated) return;
 
         if (dep.status === error) {
@@ -815,7 +830,7 @@ http://opensource.org/licenses/MIT
 
 
       } else {
-        throw new Error("Attempting to load an unsupported file type: " + this.type);
+        throw new Error("Attempting to load an unsupported file type: " + _this.type);
       }
 
       //register event handlers
@@ -848,14 +863,13 @@ http://opensource.org/licenses/MIT
       }
 
       //just appending whichever element to the head of the page
-        document.getElementsByTagName("head")[0].appendChild(this.requestObj);
+      document.getElementsByTagName("head")[0].appendChild(_this.requestObj);
     },
 
     /** @protected */
     init: function () {
-      if (this.status !== uninitiated) return; //throw new Error("Attempting to initiate a previously initiated dependency.");
-
       var _this = this;
+      if (_this.status !== uninitiated) return; //throw new Error("Attempting to initiate a previously initiated dependency.");
 
       _this.status = initiated;
 
@@ -999,14 +1013,17 @@ http://opensource.org/licenses/MIT
 
   //because events don't seem to be reliably firing in IE at times, I'm also going to poll
   function startPolling() {
-    poll = setInterval(function () {
-      if (dependencyMap.testCompleteness()) {
-        if (!allReadyFired) {
+    var timeout = configuration["pollingTimeout"];
+    setTimeout(function poll() {
+      if (!allReadyFired) {
+        if (dependencyMap.testCompleteness()) {
           allReady();
+        } else {
+          setTimeout(poll, timeout);
         }
-        clearInterval(poll);
       }
-    }, 200);
+      //at this point, just let it die off
+    }, timeout);
   }
 
   var /** @type {number} */ usingIndex = 0;
