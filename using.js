@@ -615,6 +615,8 @@ http://opensource.org/licenses/MIT
     finalize: function () {
       var _this = this, index;
 
+      if (_this.status !== resolved) return;
+
       _this.status = finalizing;
 
       //notify anything this depends on
@@ -659,11 +661,18 @@ http://opensource.org/licenses/MIT
 
     /** @protected */
     isReady: function () {
-      var _this = this;
-      if (_this.status !== resolved && _this.status !== complete) return false;
+      var _this = this, currentDep;
+
+      //if the status is complete, then it's definitely ready
+      if (_this.status === complete) return true;
+
+      //if the status isn't resolved, there's no way it could be ready
+      if (_this.status !== resolved) return false;
 
       for (var index = _this.dependentOn.length - 1; index >= 0; index--) {
-        if (!_this.dependentOn[index].isReady()) return false;
+        currentDep = _this.dependentOn[index];
+
+        if (!currentDep.isReady()) return false;
       }
 
       return true;
