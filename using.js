@@ -68,7 +68,9 @@ http://opensource.org/licenses/MIT
   /** @type {RegExp} */
   cssReg = /\.(css)$/i,
   /** @type {RegExp} */
-  domainReg = /([a-zA-Z0-9\.]*:)\/\/([^\/]+)\/?/,
+  protocolReg = /(http(s)?[:])?\/\//gim,
+  /** @type {RegExp} */
+  domainReg = /([a-zA-Z0-9\.]*:?)\/\/([^\/]+)\/?/,
 
   /** @type {string} */
   unknown = "unknown",
@@ -111,7 +113,7 @@ http://opensource.org/licenses/MIT
   //  conditionally: evaluates.as.boolean,
   //  type: "js" || "css",
   //  noExtension: evaluates.as.boolean,
-  //  dependsOn: "path/to/other/source" || new dependency || []
+  //  dependsOn: "path/to/other/source" || new dependency
   //}
 
   //convenience functions
@@ -119,8 +121,8 @@ http://opensource.org/licenses/MIT
   
   //does a shallow copy of one or more objects into the object specified
   //extend(extendee, extender1, extender2, ..., extendern)
-  /** @param {...Object} args */
-  function extend(args) {
+  /** @param {...Object} var_args */
+  function extend() {
     if(arguments.length <= 1) throw new Error("At least an extender and extendee are required");
 
     var extendee = arguments[0],
@@ -140,8 +142,8 @@ http://opensource.org/licenses/MIT
   }
 
   //like extend, but for arrays
-  /** @param {...Array} args */
-  function merge(args) {
+  /** @param {...Array} var_args */
+  function merge() {
     var mergee = arguments[0],
         merger,
         index1, index2;
@@ -221,8 +223,6 @@ http://opensource.org/licenses/MIT
     }
   }
 
-  /** @param {Dependency|Object} dep1
-      @param {Dependency|Object} dep2 */
   function dependencyEquals(dep1, dep2) {
     return dep1["src"] === dep2["src"] &&
            dep1["type"] === dep2["type"] &&
@@ -235,7 +235,7 @@ http://opensource.org/licenses/MIT
   function detectBrowser() {
     if (!global.navigator) return { "browser": null };
 
-    var browser = /** @type {Object.<name: string, version: number>} */ {
+    var browser = /** @dict */ {
       name: unknown,
       version: null
     }, results;
@@ -313,7 +313,7 @@ http://opensource.org/licenses/MIT
 
   /** @param {string} src */
   function isCrossServerLocation(src) {
-    if(src && ((src.length >= 7 && src.substr(0, 7).toLowerCase() === "http://") || (src.length >= 8 && src.substr(0, 8).toLowerCase() === "https://"))) {
+    if(src && protocolReg.test(src)) {
       if(global.location) {
         var domain = domainReg.exec(src);
         return domain && (domain[1] !== global.location.protocol || domain[2] !== global.location.host);
@@ -423,10 +423,6 @@ http://opensource.org/licenses/MIT
     return src;
   }
 
-  function ieLteTen() {
-    return configuration["browser"]["name"] === ie && configuration["browser"]["version"] <= 10;
-  }
-
   //--------------------------------------------------------//
 
 
@@ -435,21 +431,20 @@ http://opensource.org/licenses/MIT
   configure(configuration);
   //--------------------------------------------------------//
 
-  //Alias Map
+  //Dependency Map
   //--------------------------------------------------------//
 
   //the alias map keeps track of all relationships between aliases and script locations
   var aliasMap = {
     /**
       @private
-      @type {Object.<Object>} 
+      @type {Object.<object>} 
     */
     map: {},
 
 
     //will look through all dependencies to see if it can find a matching one
     /** @protected */
-    /** @param {Dependency|Object|string} dep */
     locateDependency: function (dep) {
       var index, index2, depType = getType(dep, true);
 
@@ -493,8 +488,6 @@ http://opensource.org/licenses/MIT
     },
 
     /** @protected */
-    /** @param {string} alias
-        @param {Dependency|Object|string|Array} src */
     addAlias: function (alias, src) {
       if (getType(alias) !== string) throw new Error("The alias must be a string.");
 
@@ -562,12 +555,6 @@ http://opensource.org/licenses/MIT
     }
   }
 
-  //--------------------------------------------------------//
-
-
-  //Dependency Map
-  //--------------------------------------------------------//
-
   /** Constructor */
   function Dependency(src, type, noExtension) {
     this.src = src;
@@ -627,19 +614,14 @@ http://opensource.org/licenses/MIT
       this.status = destroyed;
     },
 
-    /** @protected */
     finalize: function () {
       var _this = this, index;
-
-      if (_this.status !== resolved) return;
 
       _this.status = finalizing;
 
       //notify anything this depends on
       for (index = 0; index < _this.dependentOn.length; index++) {
-        if (_this.dependentOn[index].status !== complete) {
-          _this.dependentOn[index].notify();
-        }
+        _this.dependentOn[index].notify();
       }
 
       //run any resolution callbacks
@@ -651,9 +633,7 @@ http://opensource.org/licenses/MIT
 
       //notify anything dependent on this
       for (index = 0; index < _this.dependencyFor.length; index++) {
-        if (_this.dependencyFor[index].status != complete) {
-          _this.dependencyFor[index].notify();
-        }
+        _this.dependencyFor[index].notify();
       }
 
       if (dependencyMap.testCompleteness()) {
@@ -681,32 +661,22 @@ http://opensource.org/licenses/MIT
 
     /** @protected */
     isReady: function () {
-      var _this = this, currentDep;
-
-      //if the status is complete, then it's definitely ready
-      if (_this.status === complete) return true;
-
-      //if the status isn't resolved, there's no way it could be ready
-      if (_this.status !== resolved) return false;
+      var _this = this;
+      if (_this.status !== resolved && _this.status !== complete) return false;
 
       for (var index = _this.dependentOn.length - 1; index >= 0; index--) {
-        currentDep = _this.dependentOn[index];
-
-        if (!currentDep.isReady()) return false;
+        if (!_this.dependentOn[index].isReady()) return false;
       }
 
       return true;
     },
 
     /** @protected */
-    /** @param {Dependency} otherDep */
     dependOn: function (otherDep) {
       var _this = this;
 
       //type checking
       if (!otherDep || otherDep.constructor !== Dependency) throw new Error("The other dependency must be a valid Dependency object.");
-
-      if (_this.src === "../Source.aspx/Images") debugger;
 
       //don't want to depend on ourselves, now do we?
       if (_this.matches(otherDep)) return;
@@ -727,7 +697,6 @@ http://opensource.org/licenses/MIT
     },
 
     /** @protected */
-    /** @param {function} callback */
     addResolutionCallback: function (callback) {
       if (getType(callback) !== "function") throw new Error("dependency resolution callback function must be a function.");
       if (this.stautus === resolved) {
@@ -738,7 +707,6 @@ http://opensource.org/licenses/MIT
     },
 
     /** @protected */
-    /** @param {Dependency|Object|string} dep */
     matches: function (dep) {
       var depType = getType(dep);
 
@@ -809,7 +777,6 @@ http://opensource.org/licenses/MIT
       if(_this.status !== destroyed) _this.notify();
     },
 
-    /** @protected */
     error: function () {
       var _this = this, index, dep, parent = arguments[0], message;
 
@@ -904,7 +871,7 @@ http://opensource.org/licenses/MIT
     /** @protected */
     init: function () {
       var _this = this;
-      if (_this.status !== uninitiated) return; //throw new Error("Attempting to initiate a previously initiated dependency.");
+      if (_this.status !== uninitiated) return; 
 
       _this.status = initiated;
 
@@ -950,7 +917,6 @@ http://opensource.org/licenses/MIT
     },
 
     /** @protected */
-    /** @param {Dependency|Object|string} dep */
     locateDependency: function (dep) {
       switch(getType(dep)) {
         case string:
@@ -965,7 +931,6 @@ http://opensource.org/licenses/MIT
     },
 
     /** @protected */
-    /** @param {Dependency|Object|string} dep */
     addDependency: function(dep) {
       if (!this.locateDependency(dep)) {
         var newDependency;
@@ -989,7 +954,6 @@ http://opensource.org/licenses/MIT
     },
 
     /** @protected */
-    /** @param {Dependency|Object|string} dep */
     removeDependency: function(dep) {
       switch (getType(dep)) {
         case string:
@@ -1019,6 +983,9 @@ http://opensource.org/licenses/MIT
       }
     },
 
+    notifyAll: function() {
+
+    },
 
     /** @protected */
     testCompleteness: function () {
@@ -1065,16 +1032,9 @@ http://opensource.org/licenses/MIT
 
   //--------------------------------------------------------//
 
-
-
-  //public interface
+  //public access
   //--------------------------------------------------------//
-  /** 
-    @param {string|Object} src
-    @param {function=} callback
-    @param {Dependency=} hdnDepRef
-  */
-  function using(src, callback, hdnDepRef) {
+  function using(src, callback) {
     var /** @type {Array.<string>} */     sourceList, 
         /** @type {number} */             index,
         /** @type {number} */             index2,
@@ -1083,7 +1043,8 @@ http://opensource.org/licenses/MIT
         /** @type {Dependency} */         dep,
         /** @type {Dependency} */         executingDependency,
         /** @type {boolean} */            delayInit,
-        /** @type {boolean} */            initialUsing = dependencyMap.empty();
+        /** @type {boolean} */            initialUsing = dependencyMap.empty(),
+        /** @type {Dependency} */         hdnDepRef = arguments[2];
 
 
     switch (getType(src, true)) {
@@ -1113,7 +1074,7 @@ http://opensource.org/licenses/MIT
       executingDependency = hdnDepRef;
     } else {
       //earlier versions of IE may not execute scripts in the right order, but they do mark a script as interactive
-      if (ieLteTen()) {
+      if (configuration["browser"]["name"] === ie && configuration["browser"]["version"] <= 10) {
         executingDependency = dependencyMap.locateInteractiveDependency();
       }
     }
@@ -1177,7 +1138,7 @@ http://opensource.org/licenses/MIT
       if (callback) usingDep.addResolutionCallback(callback);
       usingDep.init();
 
-      if (!initialUsing && !ieLteTen()) {
+      if (!initialUsing) {
         unknownDependencies.push(usingDep);
       }
     }
