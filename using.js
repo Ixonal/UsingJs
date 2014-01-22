@@ -114,7 +114,7 @@ http://opensource.org/licenses/MIT
     //  conditionally: evaluates.as.boolean,
     //  type: "js" || "css",
     //  noExtension: evaluates.as.boolean,
-    //  dependsOn: "path/to/other/source" || new dependency || []
+    //  dependsOn: "path/to/other/source" || "alias" || new dependency || []
     //}
 
     //convenience functions
