@@ -71,7 +71,7 @@ http://opensource.org/licenses/MIT
     /** @type {RegExp} */
     cssReg = /\.(css)$/i,
     /** @type {RegExp} */
-    domainReg = /([a-zA-Z0-9\.]*:)\/\/([^\/]+)\/?/,
+    domainReg = /([a-zA-Z0-9\.]*:)?\/\/([^\/]+)\/?/,
 
     /** @type {string} */
     unknown = "unknown",
@@ -317,9 +317,10 @@ http://opensource.org/licenses/MIT
 
     /** @param {string} src */
     function isCrossServerLocation(src) {
-      if (src && ((src.length >= 7 && src.substr(0, 7).toLowerCase() === "http://") || (src.length >= 8 && src.substr(0, 8).toLowerCase() === "https://"))) {
+      if (!src) return false;
+      var domain = domainReg.exec(src);
+      if(domain) {
         if (global.location) {
-          var domain = domainReg.exec(src);
           return domain && (domain[1] !== global.location.protocol || domain[2] !== global.location.host);
         } else {
           return true;
