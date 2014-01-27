@@ -111,6 +111,7 @@ http://opensource.org/licenses/MIT
     //general form of dependency: 
     //{
     //  src: "path/to/source",
+    //  backup: "path/to/backup/source",
     //  conditionally: evaluates.as.boolean,
     //  type: "js" || "css",
     //  noExtension: evaluates.as.boolean,
@@ -574,10 +575,12 @@ http://opensource.org/licenses/MIT
     /** @constructor 
         @param {string} src 
         @param {string=} type 
-        @param {boolean=} noExtension */
-    function Dependency(src, type, noExtension) {
+        @param {boolean=} noExtension 
+        @param {string=} backup */
+    function Dependency(src, type, noExtension, backup) {
       this.src = src;
       this.type = type || js;
+      this.backup = backup;
       this.noExtension = noExtension;
       this.resolutionCallbacks = [];
       this.dependencyFor = [];
@@ -587,6 +590,8 @@ http://opensource.org/licenses/MIT
     extend(Dependency.prototype, {
       /** @protected */
       src: null,                  //location of this dependency
+      /** @protected */
+      backup: null,               //backup location for this dependency
       /** @protected */
       type: js,                   //the type of this dependency
       /** @protected */
@@ -686,7 +691,7 @@ http://opensource.org/licenses/MIT
       },
 
       /** @protected */
-      isReady: function () {
+      isReady: function (path) {
         var _this = this, currentDep;
 
         //if the status is complete, then it's definitely ready
@@ -695,10 +700,14 @@ http://opensource.org/licenses/MIT
         //if the status isn't resolved, there's no way it could be ready
         if (_this.status !== resolved) return false;
 
+        path = path || [];
+
         for (var index = _this.dependentOn.length - 1; index >= 0; index--) {
           currentDep = _this.dependentOn[index];
+          //if the current dependency was found in the path, just keep going
+          if (indexOf(path, currentDep) !== -1) continue;
 
-          if (!currentDep.isReady()) return false;
+          if (!currentDep.isReady(path)) return false;
         }
 
         return true;
@@ -889,7 +898,14 @@ http://opensource.org/licenses/MIT
           //};
           if (_this.requestObj.attachEvent) {
             _this.requestObj.attachEvent("onerror", function () {
-              _this.error();
+              if (_this.backup && _this.backup !== _this.src) {
+                emitError("Error occurred while loading " + _this.src + ", attempting to load " + _this.backup);
+                _this.src = _this.backup;
+                _this.status = initiated;
+                _this.load();
+              } else {
+                _this.error();
+              }
             });
           }
         } else {
@@ -899,7 +915,14 @@ http://opensource.org/licenses/MIT
           }, true);
 
           _this.requestObj.addEventListener("error", function (e) {
-            _this.error();
+            if (_this.backup && _this.backup !== _this.src) {
+              emitError("Error occurred while loading " + _this.src + ", attempting to load " + _this.backup);
+              _this.src = _this.backup;
+              _this.status = initiated;
+              _this.load();
+            } else {
+              _this.error();
+            }
           }, true);
         }
 
@@ -1131,11 +1154,11 @@ http://opensource.org/licenses/MIT
           switch (getType(sourceList[index], true)) {
             case string:
               delayInit = false;
-              dep = new Dependency(sourceList[index], getUsingType(sourceList[index]), false);
+              dep = new Dependency(sourceList[index], getUsingType(sourceList[index]), false, null);
               break;
             case dependency:
               delayInit = sourceList[index]["dependsOn"];
-              dep = new Dependency(sourceList[index]["src"], getUsingType(sourceList[index]), sourceList[index]["noExtension"]);
+              dep = new Dependency(sourceList[index]["src"], getUsingType(sourceList[index]), sourceList[index]["noExtension"], sourceList[index]["backup"]);
               break;
           }
           dependencyMap.addDependency(dep);
