@@ -30,7 +30,7 @@ consolidate all the various features that I liked from other script loaders into
 </pre>
 <br/>
 
-Well that's simple enough. How about something more helpful?<br/>
+<i>Well that's simple enough. How about something more helpful?</i><br/>
 <br/>
 <b>Conditionals:</b>
 <pre>
@@ -40,7 +40,7 @@ Well that's simple enough. How about something more helpful?<br/>
 </pre>
      
 <br/><br/>
-Spiffy. What if my script depends on multiple other scripts?<br/>
+<i>Spiffy. What if my script depends on multiple other scripts?</i><br/>
 <br/>
 <b>Using lists:</b>
 <pre>
@@ -49,7 +49,7 @@ Spiffy. What if my script depends on multiple other scripts?<br/>
   });
 </pre>
 <br/>
-OK, now what if I don't want to include huge lists of files or huge file names all over the place?<br/>
+<i>OK, now what if I don't want to include huge lists of files or huge file names all over the place?</i><br/>
 <br/>
 <b>Using alias:</b>
 <pre>
@@ -68,7 +68,7 @@ OK, now what if I don't want to include huge lists of files or huge file names a
 An alias may contain sources or even other aliases.
 
 <br/><br/>
-So what's this about dependency tracking?<br/>
+<i>So what's this about dependency tracking?</i><br/>
 <br/>
 <b>Dependency Tracking:</b><br/>
 Assume there are three files, A.js, B.js, and C.js<br/>
@@ -119,7 +119,7 @@ Assume there are three files, A.js, B.js, and C.js<br/>
 <br/>
 As you see, file dependencies will resolve themselves without the need to pre-register anything.
 <br/><br/>
-Anything else I should know?<br/>
+<i>Anything else I should know?</i><br/>
 <br/>
 <b>Dependencies may be described using either a string (as above) or an object of the following form:</b>
 <pre>
