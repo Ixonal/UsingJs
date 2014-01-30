@@ -135,7 +135,7 @@ As you see, file dependencies will resolve themselves without the need to pre-re
 
 <b>Of Note:</b><br/>
 The "dependsOn" property, as defined above, allows defining dependency chains for libraries which don't 
-use this library. A good example of the use of this is including both jQuery and jQuery UI.
+use UsingJs. A good example of the use of this is including both jQuery and jQuery UI.
 <pre>
   using(["jQuery", { src: "jQueryUI", dependsOn: "jQuery" }], function() {
     //occurs after jQuery and then jQueryUI are loaded
