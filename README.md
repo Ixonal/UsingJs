@@ -71,8 +71,9 @@ An alias may contain sources (in either string or object form) or even other ali
 <i>So what's this about dependency tracking?</i><br/>
 <br/>
 <b>Dependency Tracking:</b><br/>
-Anything within a using callback will only be run after all dependencies listed are ready. This only happens when those dependencies have all of their dependencies ready as well, on and on up the chain. These chains are created naturally through using calls or by specifying the 'dependsOn' property in a dependency declaration. <br/>
-For example, assume there are three files, A.js, B.js, and C.js<br/>
+Anything within a using callback will only be run after all dependencies listed are ready. This only happens when those dependencies have all of their dependencies ready as well, on and on up the chain. These chains are created naturally through using calls or by specifying the 'dependsOn' property in a dependency declaration. <br/><br/>
+
+For example, assume there are three files, A.js, B.js, and C.js<br/><br/>
 <b>A.js:</b>
 <pre>
   console.log("in A");
