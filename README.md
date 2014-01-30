@@ -65,7 +65,7 @@ consolidate all the various features that I liked from other script loaders into
     //occurs after all dependencies in the MainScripts alias are loaded
   });
 </pre>
-An alias may contain sources or even other aliases.
+An alias may contain sources (in either string or object form) or even other aliases.
 
 <br/><br/>
 <i>So what's this about dependency tracking?</i><br/>
