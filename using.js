@@ -318,6 +318,7 @@ http://opensource.org/licenses/MIT
     /** @param {string} src */
     function isCrossServerLocation(src) {
       if (!src) return false;
+      domainReg.lastIndex = 0;
       var domain = domainReg.exec(src);
       if(domain) {
         if (global.location) {
@@ -594,6 +595,8 @@ http://opensource.org/licenses/MIT
       /** @protected */
       backup: null,               //backup location for this dependency
       /** @protected */
+      useBackup: false,           //whether or not to use the backup location to load
+      /** @protected */
       type: js,                   //the type of this dependency
       /** @protected */
       noExtension: false,         //whether or not to include an extension in the source for this dependency
@@ -722,8 +725,6 @@ http://opensource.org/licenses/MIT
         //type checking
         if (!otherDep || otherDep.constructor !== Dependency) throw new Error("The other dependency must be a valid Dependency object.");
 
-        if (_this.src === "../Source.aspx/Images") debugger;
-
         //don't want to depend on ourselves, now do we?
         if (_this.matches(otherDep)) return;
 
@@ -847,7 +848,7 @@ http://opensource.org/licenses/MIT
 
       /** @protected */
       load: function () {
-        var _this = this, index, dep;
+        var _this = this, index, dep, onError;
 
         if (this.status !== initiated) return;
 
@@ -867,7 +868,7 @@ http://opensource.org/licenses/MIT
         if (_this.type === js) {
           //using a script element
           _this.requestObj = document.createElement("script");
-          _this.requestObj.setAttribute("src", resolveSourceLocation(_this.src, _this.type, _this.noExtension));
+          _this.requestObj.setAttribute("src", resolveSourceLocation(_this.useBackup ? _this.backup : _this.src, _this.type, _this.noExtension));
           _this.requestObj.setAttribute("type", "text/javascript");
           _this.requestObj.setAttribute("defer", "false");
           _this.requestObj.setAttribute("async", "true");
@@ -876,13 +877,26 @@ http://opensource.org/licenses/MIT
           //using a link element
           _this.requestObj = document.createElement("link");
           _this.requestObj.setAttribute("type", "text/css");
-          _this.requestObj.setAttribute("href", resolveSourceLocation(_this.src, _this.type, _this.noExtension));
+          _this.requestObj.setAttribute("href", resolveSourceLocation(_this.useBackup ? _this.backup : _this.src, _this.type, _this.noExtension));
           _this.requestObj.setAttribute("rel", "stylesheet");
 
 
         } else {
           throw new Error("Attempting to load an unsupported file type: " + _this.type);
         }
+
+
+        onError = function () {
+          if (_this.backup && !_this.useBackup) {
+            emitError("Error occurred while loading " + _this.src + ", attempting to load " + _this.backup);
+            _this.useBackup = true;
+            _this.status = initiated;
+            _this.load();
+          } else {
+            _this.error();
+          }
+        }
+
 
         //register event handlers
         if (configuration["browser"]["name"] === ie && configuration["browser"]["version"] < 9) {
@@ -898,16 +912,7 @@ http://opensource.org/licenses/MIT
           //  emitError("test");
           //};
           if (_this.requestObj.attachEvent) {
-            _this.requestObj.attachEvent("onerror", function () {
-              if (_this.backup && _this.backup !== _this.src) {
-                emitError("Error occurred while loading " + _this.src + ", attempting to load " + _this.backup);
-                _this.src = _this.backup;
-                _this.status = initiated;
-                _this.load();
-              } else {
-                _this.error();
-              }
-            });
+            _this.requestObj.attachEvent("onerror", onError);
           }
         } else {
           _this.requestObj.addEventListener("load", function () {
@@ -915,16 +920,7 @@ http://opensource.org/licenses/MIT
             _this.resolve();
           }, true);
 
-          _this.requestObj.addEventListener("error", function (e) {
-            if (_this.backup && _this.backup !== _this.src) {
-              emitError("Error occurred while loading " + _this.src + ", attempting to load " + _this.backup);
-              _this.src = _this.backup;
-              _this.status = initiated;
-              _this.load();
-            } else {
-              _this.error();
-            }
-          }, true);
+          _this.requestObj.addEventListener("error", onError, true);
         }
 
         //just appending whichever element to the head of the page
