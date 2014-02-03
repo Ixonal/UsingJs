@@ -705,6 +705,7 @@ http://opensource.org/licenses/MIT
         if (_this.status !== resolved) return false;
 
         path = path || [];
+        path.push(_this);
 
         for (var index = _this.dependentOn.length - 1; index >= 0; index--) {
           currentDep = _this.dependentOn[index];
@@ -975,6 +976,20 @@ http://opensource.org/licenses/MIT
         return null;
       },
 
+      locateCurrentScriptDependency: function() {
+        var _this = this, index, dependency, currentScript = document.currentScript;
+
+        if (!currentScript.src) return null;
+
+        for (index in _this._dependencies) {
+          dependency = _this._dependencies[index];
+          if (dependency.requestObj && dependency.requestObj === currentScript) {
+            return dependency;
+          }
+        }
+
+      },
+
       /** @protected */
       /** @param {Dependency|Object|string} dep */
       locateDependency: function (dep) {
@@ -1141,6 +1156,9 @@ http://opensource.org/licenses/MIT
         //earlier versions of IE may not execute scripts in the right order, but they do mark a script as interactive
         if (ieLteTen()) {
           executingDependency = dependencyMap.locateInteractiveDependency();
+        } else if (document.currentScript) {
+          //newer browsers will keep track of the currently executing script
+          executingDependency = dependencyMap.locateCurrentScriptDependency();
         }
       }
 
