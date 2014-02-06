@@ -1319,4 +1319,4 @@ http://opensource.org/licenses/MIT
     if (configuration.initialStyleUsing) using.css(configuration.initialStyleUsing);
 
     return using;
-  })(window || global, ((window || global)["using"] ? using["configuration"] : null));
+  })(this, (this["using"] ? using["configuration"] : null));
