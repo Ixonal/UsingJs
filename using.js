@@ -213,7 +213,7 @@ http://opensource.org/licenses/MIT
           //a date
           return date;
         } else if (obj["src"]) {
-          //a dependency entry (loosely defined)
+          //a dependency entry (loosely defined) will have a src property
           return dependency;
         } else {
           //general object
@@ -232,17 +232,19 @@ http://opensource.org/licenses/MIT
              dep1["type"] === dep2["type"] &&
              dep1["conditionally"] === dep2["conditionally"] &&
              dep1["dependsOn"] === dep2["dependsOn"] &&
-             dep1["noExtension"] === dep2["noExtension"];
+             dep1["noExtension"] === dep2["noExtension"] && 
+             dep1["backup"] === dep2["backup"];
     }
 
     //detects the user's browser and version
     function detectBrowser() {
-      if (!global.navigator) return { "browser": null };
 
       var /** @type {{name: ?string, version: ?number}} */ browser = {
         name: unknown,
         version: null
       }, results;
+
+      if (!global.navigator) return { "browser": browser };
 
       if (results = ieReg.exec(global.navigator.userAgent)) {
         browser.name = ie;
@@ -315,18 +317,25 @@ http://opensource.org/licenses/MIT
       return null;
     }
 
+    //determines if a particular location is on another server
     /** @param {string} src */
     function isCrossServerLocation(src) {
       if (!src) return false;
-      domainReg.lastIndex = 0;
+      domainReg.lastIndex = 0; //make sure to start at the beginning
+
+      //let's see what we got
       var domain = domainReg.exec(src);
-      if(domain) {
+      if (domain) {
+        //there is a domain specified
         if (global.location) {
+          //see if the protocol and host are the same
           return domain && (domain[1] !== global.location.protocol || domain[2] !== global.location.host);
         } else {
+          //just assuming it's another domain here
           return true;
         }
       } else {
+        //if the regex returns null, then it didn't find anything to indicate this is for another server
         return false;
       }
     }
@@ -354,6 +363,7 @@ http://opensource.org/licenses/MIT
           retVal = retVal.substr(1);
         }
 
+        //can trick browsers into getting an uncached copy of a script by adding the current timestamp as a query string parameter
         if (!configuration["cached"]) {
           if (retVal.indexOf("?") === -1) {
             retVal += "?_t=" + timestamp;
@@ -377,6 +387,8 @@ http://opensource.org/licenses/MIT
       }
     }
 
+    //see if we're working with a javascript or css include
+    /** @protected */
     function getUsingType(src) {
       switch (getType(src)) {
         case string:
@@ -429,6 +441,7 @@ http://opensource.org/licenses/MIT
       return src;
     }
 
+    //determines if the user is on a version of Internet Explorer less than or equal to 10
     function ieLteTen() {
       return configuration["browser"]["name"] === ie && configuration["browser"]["version"] <= 10;
     }
@@ -535,6 +548,7 @@ http://opensource.org/licenses/MIT
         return this;
       },
 
+      //get all sources associated with a given alias
       /** @protected */
       resolveAlias: function (alias) {
         var sources = [], index;
@@ -571,7 +585,7 @@ http://opensource.org/licenses/MIT
     //--------------------------------------------------------//
 
 
-    //Dependency Map
+    //Dependencies
     //--------------------------------------------------------//
 
     /** @constructor 
@@ -601,9 +615,7 @@ http://opensource.org/licenses/MIT
       /** @protected */
       noExtension: false,         //whether or not to include an extension in the source for this dependency
       /** @protected */
-      searched: false,            //whether or not this node has been searched through
-      /** @protected */
-      status: uninitiated,
+      status: uninitiated,        //status of this dependency
       /** @protected */
       dependencyFor: null,        //dependencies observing this dependency
       /** @protected */
@@ -637,8 +649,9 @@ http://opensource.org/licenses/MIT
         delete this.requestObj;
         delete this.requestObj;
         delete this.src;
+        delete this.backup;
+        delete this.useBackup;
         delete this.type;
-        delete this.searched;
         this.status = destroyed;
       },
 
@@ -646,8 +659,10 @@ http://opensource.org/licenses/MIT
       finalize: function () {
         var _this = this, index;
 
+        //can only finalize if successfully resolved
         if (_this.status !== resolved) return;
 
+        //for a short period, we're in the processing of finalizing
         _this.status = finalizing;
 
         //notify anything this depends on
@@ -662,6 +677,7 @@ http://opensource.org/licenses/MIT
           _this.resolutionCallbacks[index]();
         }
 
+        //now we are officially considered complete
         this.status = complete;
 
         //notify anything dependent on this
@@ -671,6 +687,7 @@ http://opensource.org/licenses/MIT
           }
         }
 
+        //check to see if everything else is ready
         if (dependencyMap.testCompleteness()) {
           allReady();
         }
@@ -682,15 +699,12 @@ http://opensource.org/licenses/MIT
         //return if not currently resolved
         if (_this.status !== resolved && _this.status !== error) return;
 
-        //a dependency resolved, test to see if this one can resolve
-        var index, ready = _this.isReady();
-
-        if (ready) {
-          _this.finalize();
-        } else if (_this.status === error) {
+        if (_this.status === error) {
           if (dependencyMap.testCompleteness()) {
             allReady();
           }
+        } else if (_this.isReady()) {
+          _this.finalize();
         }
       },
 
@@ -709,9 +723,13 @@ http://opensource.org/licenses/MIT
 
         for (var index = _this.dependentOn.length - 1; index >= 0; index--) {
           currentDep = _this.dependentOn[index];
-          //if the current dependency was found in the path, just keep going
-          if (indexOf(path, currentDep) !== -1) continue;
+          if (indexOf(path, currentDep) !== -1) {
+            //if the current dependency was found in the path, just notify the user and keep going
+            emitError("Cyclic dependency found: " + _this.src);
+            continue;
+          }
 
+          //yes, this is recursive
           if (!currentDep.isReady(path)) return false;
         }
 
@@ -758,6 +776,7 @@ http://opensource.org/licenses/MIT
       /** @protected */
       /** @param {Dependency|Object|string} dep */
       matches: function (dep) {
+        //does this dependency match (different from equal) another dependency?
         var depType = getType(dep);
 
         if (depType === string) {
@@ -797,10 +816,8 @@ http://opensource.org/licenses/MIT
         var _this = this, index, index2, dependencies, dependency, storedDependencies, dependentOn, dependencyIndex;
 
         //incude was loaded and the code should have been executed, so find any unknown dependencies and associate them with this dependency
-        dependencies = unknownDependencies.splice(0, unknownDependencies.length);
-        //debugger;
-        for (index = 0; index < dependencies.length; index++) {
-          dependency = dependencies[index];
+        while ((dependency = unknownDependencies.shift()) !== undefined) {
+          //we only want using contexts that haven't been destroyed
           if (dependency.type !== usingContext || dependency.status === destroyed) continue;
           storedDependencies = [];
 
@@ -824,7 +841,7 @@ http://opensource.org/licenses/MIT
 
         _this.status = resolved;
 
-        if (_this.status !== destroyed) _this.notify();
+        _this.notify();
       },
 
       /** @protected */
@@ -853,9 +870,10 @@ http://opensource.org/licenses/MIT
 
         if (this.status !== initiated) return;
 
-        //first, check to make sure that none of the files this file is dependent on are not loaded
+        //first, check to make sure that all of the files this file is dependent on are loaded
         for (index = _this.dependentOn.length - 1; index >= 0; index--) {
           dep = _this.dependentOn[index];
+          //since we can't control when this will execute, if there's a dependency that isn't done yet, we're not ready to load yet.
           if (dep.status === loading || dep.status === initiated) return;
 
           if (dep.status === error) {
@@ -867,7 +885,7 @@ http://opensource.org/licenses/MIT
         _this.status = loading;
 
         if (_this.type === js) {
-          //using a script element
+          //using a script element for Javascript
           _this.requestObj = document.createElement("script");
           _this.requestObj.setAttribute("src", resolveSourceLocation(_this.useBackup ? _this.backup : _this.src, _this.type, _this.noExtension));
           _this.requestObj.setAttribute("type", "text/javascript");
@@ -875,7 +893,7 @@ http://opensource.org/licenses/MIT
           _this.requestObj.setAttribute("async", "true");
 
         } else if (_this.type === css) {
-          //using a link element
+          //using a link element for CSS
           _this.requestObj = document.createElement("link");
           _this.requestObj.setAttribute("type", "text/css");
           _this.requestObj.setAttribute("href", resolveSourceLocation(_this.useBackup ? _this.backup : _this.src, _this.type, _this.noExtension));
@@ -886,7 +904,7 @@ http://opensource.org/licenses/MIT
           throw new Error("Attempting to load an unsupported file type: " + _this.type);
         }
 
-
+        //general error handler
         onError = function () {
           if (_this.backup && !_this.useBackup) {
             emitError("Error occurred while loading " + _this.src + ", attempting to load " + _this.backup);
@@ -909,9 +927,6 @@ http://opensource.org/licenses/MIT
               _this.resolve();
             }
           }
-          //global.onerror = function (msg, url, lineNum) {
-          //  emitError("test");
-          //};
           if (_this.requestObj.attachEvent) {
             _this.requestObj.attachEvent("onerror", onError);
           }
@@ -931,13 +946,13 @@ http://opensource.org/licenses/MIT
       /** @protected */
       init: function () {
         var _this = this;
-        if (_this.status !== uninitiated) return; //throw new Error("Attempting to initiate a previously initiated dependency.");
-
-        _this.status = initiated;
+        if (_this.status !== uninitiated) return; 
 
         if (_this.type !== usingContext && _this.type !== page) {
+          _this.status = initiated;
           _this.load();
         } else {
+          _this.status = resolved;
           _this.notify();
         }
       }
@@ -951,17 +966,11 @@ http://opensource.org/licenses/MIT
       _depenencyCount: 0,
 
       /** @protected */
-      clearSearchedFlags: function () {
-        for (var index in this._dependencies) {
-          this._dependencies[index].searched = false;
-        }
-      },
-
-      /** @protected */
       empty: function () {
         return this._depenencyCount === 0;
       },
 
+      //locates a dependency based off of it being considered "interactive"
       /** @protected */
       locateInteractiveDependency: function () {
         var index, dependency;
@@ -976,6 +985,8 @@ http://opensource.org/licenses/MIT
         return null;
       },
 
+      //locates a dependency based off of the "currentScript" property
+      /** @protected */
       locateCurrentScriptDependency: function() {
         var _this = this, index, dependency, currentScript = document.currentScript;
 
@@ -1050,16 +1061,6 @@ http://opensource.org/licenses/MIT
         return this;
       },
 
-      /** @protected */
-      resolve: function () {
-        //go through existing dependencies and load where needed
-        for (var index in this._dependencies) {
-          if (!this._dependencies[index].initiated) {
-            this._dependencies[index].resolve();
-          }
-        }
-      },
-
 
       /** @protected */
       testCompleteness: function () {
@@ -1077,7 +1078,7 @@ http://opensource.org/licenses/MIT
       }
     }
 
-    var /** @type {Array.<function()>} */ readyCallbacks = [], allReadyFired = false, poll;
+    var /** @type {Array.<function()>} */ readyCallbacks = [], allReadyFired = false, polling = false;
 
     function allReady() {
       if (allReadyFired) return;
@@ -1089,6 +1090,8 @@ http://opensource.org/licenses/MIT
 
     //because events don't seem to be reliably firing in IE at times, I'm also going to poll
     function startPolling() {
+      if (polling) return;
+      polling = true;
       var timeout = configuration["pollingTimeout"];
       setTimeout(function poll() {
         if (!allReadyFired) {
@@ -1099,6 +1102,7 @@ http://opensource.org/licenses/MIT
           }
         }
         //at this point, just let it die off
+        polling = false;
       }, timeout);
     }
 
@@ -1124,7 +1128,7 @@ http://opensource.org/licenses/MIT
           /** @type {Dependency} */         dep,
           /** @type {Dependency} */         executingDependency,
           /** @type {boolean} */            delayInit,
-          /** @type {boolean} */            initialUsing = dependencyMap.empty();
+          /** @type {boolean} */            initialUsing = dependencyMap.empty(); 
 
 
       switch (getType(src, true)) {
@@ -1146,7 +1150,8 @@ http://opensource.org/licenses/MIT
       dependencies = [];
 
       if (initialUsing) {
-        //initially, we're going to create a base "page" type dependency
+        //initially, we're going to create a base "page" type dependency. I may need to look into this further at some later time, 
+        //since there can (and often are) multiple using calls coming directly from the page.
         executingDependency = new Dependency(page, page);
         executingDependency.init();
       } else if (hdnDepRef) {
