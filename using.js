@@ -198,6 +198,8 @@ http://opensource.org/licenses/MIT
     /** @param {Object|string|function()|number} obj 
         @param {boolean=} excludeArrayType */
     function getType(obj, excludeArrayType) {
+      if (obj === null) return "null";
+      if (obj === undefined) return "undefined";
       if (typeof (obj) === object) {
         //lots of things count as objects, so let's get a lil more specific
         if (obj.constructor === global["Array"]) {
@@ -551,7 +553,7 @@ http://opensource.org/licenses/MIT
       //get all sources associated with a given alias
       /** @protected */
       resolveAlias: function (alias) {
-        var sources = [], index;
+        var sources = [], index, innerSources;
 
         switch (getType(alias, true)) {
           case string:
@@ -566,13 +568,18 @@ http://opensource.org/licenses/MIT
             break;
           case dependency:
             //resolving a single "dependency"
-            return [alias];
+            if (alias["conditionally"] === undefined || alias["conditionally"] === true) {
+              innerSources = this.resolveAlias(alias.src);
+              if (innerSources.length > 0 && !(innerSources.length === 1 && innerSources[0] === alias.src)) return innerSources;
+              else return [alias];
+            } else return sources;
             break;
           case array:
             if (alias.length === 0) return sources;
             for (index = alias.length - 1; index >= 0; index--) {
               merge(sources, this.resolveAlias(alias[index]));
             }
+            if (sources.length === 0) merge(sources, alias);
             break;
           default:
             throw new Error("Alias is not a recognized type.");
@@ -918,7 +925,37 @@ http://opensource.org/licenses/MIT
 
 
         //register event handlers
-        if (configuration["browser"]["name"] === ie && configuration["browser"]["version"] < 9) {
+        //if (configuration["browser"]["name"] === ie && configuration["browser"]["version"] < 9) {
+        //  _this.requestObj.onreadystatechange = function () {
+
+        //    if (_this.requestObj.readyState === "complete" || _this.requestObj.readyState === "loaded") {
+        //      _this.requestObj.onreadystatechange = null;
+        //      _this.status = loaded;
+        //      _this.resolve();
+        //    }
+        //  }
+        //  if (_this.requestObj.attachEvent) {
+        //    _this.requestObj.attachEvent("onerror", onError);
+        //  }
+        //} else {
+        //  _this.requestObj.addEventListener("load", function () {
+        //    _this.status = loaded;
+        //    _this.resolve();
+        //  }, true);
+
+        //  _this.requestObj.addEventListener("error", onError, true);
+        //}
+
+        if (_this.requestObj.addEventListener) {
+          //can use addEventListener
+          _this.requestObj.addEventListener("load", function () {
+            _this.status = loaded;
+            _this.resolve();
+          }, true);
+
+          _this.requestObj.addEventListener("error", onError, true);
+        } else if (configuration["browser"]["name"] === ie && configuration["browser"]["version"] < 9) {
+          //have an older version of IE
           _this.requestObj.onreadystatechange = function () {
 
             if (_this.requestObj.readyState === "complete" || _this.requestObj.readyState === "loaded") {
@@ -931,12 +968,8 @@ http://opensource.org/licenses/MIT
             _this.requestObj.attachEvent("onerror", onError);
           }
         } else {
-          _this.requestObj.addEventListener("load", function () {
-            _this.status = loaded;
-            _this.resolve();
-          }, true);
-
-          _this.requestObj.addEventListener("error", onError, true);
+          //well hmmm....
+          _this.error("Unable to properly attach events with the current browser configuration.");
         }
 
         //just appending whichever element to the head of the page
