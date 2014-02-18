@@ -3,7 +3,8 @@ UsingJs
 
 Javascript async script loader and dependency tracker. I know that many others exist, 
 however nothing did quite what I wanted it to do, so I created this. I also tried to 
-consolidate all the various features that I liked from other script loaders into one.
+consolidate all the various features that I liked from other script loaders into one. 
+Please make sure to download from a release tag, rather than the master copy.
 
 <b>To include UsingJs on the page:</b><br\>
 
