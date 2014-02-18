@@ -1274,6 +1274,8 @@ http://opensource.org/licenses/MIT
     }
 
     //forces using calls to be in the context of the page (as opposed to a script file)
+    /** @param {Dependency|Array|function()} opt1 
+        @param {function()=} opt2 */
     using.page = function (opt1, opt2) {
       inPageBlock = true;
       switch (getType(opt1, true)) {
@@ -1288,6 +1290,8 @@ http://opensource.org/licenses/MIT
     }
     using["page"] = using.page;
 
+    /** @param {Dependency|Array|function()} opt1 
+        @param {function()=} opt2 */
     using.page.css = function (opt1, opts) {
       inPageBlock = true;
       switch (getType(opt1, true)) {
