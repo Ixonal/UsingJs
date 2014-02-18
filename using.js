@@ -236,7 +236,7 @@ http://opensource.org/licenses/MIT
              dep1["type"] === dep2["type"] &&
              dep1["conditionally"] === dep2["conditionally"] &&
              dep1["dependsOn"] === dep2["dependsOn"] &&
-             dep1["noExtension"] === dep2["noExtension"] && 
+             dep1["noExtension"] === dep2["noExtension"] &&
              dep1["backup"] === dep2["backup"];
     }
 
@@ -981,7 +981,7 @@ http://opensource.org/licenses/MIT
       /** @protected */
       init: function () {
         var _this = this;
-        if (_this.status !== uninitiated) return; 
+        if (_this.status !== uninitiated) return;
 
         if (_this.type !== usingContext && _this.type !== page) {
           _this.status = initiated;
@@ -1022,7 +1022,7 @@ http://opensource.org/licenses/MIT
 
       //locates a dependency based off of the "currentScript" property
       /** @protected */
-      locateCurrentScriptDependency: function() {
+      locateCurrentScriptDependency: function () {
         var _this = this, index, dependency, currentScript = document.currentScript;
 
         if (!currentScript.src) return null;
@@ -1163,7 +1163,7 @@ http://opensource.org/licenses/MIT
           /** @type {Dependency} */         dep,
           /** @type {Dependency} */         executingDependency,
           /** @type {boolean} */            delayInit,
-          /** @type {boolean} */            initialUsing = dependencyMap.empty(); 
+          /** @type {boolean} */            initialUsing = dependencyMap.empty();
 
 
       switch (getType(src, true)) {
@@ -1288,6 +1288,20 @@ http://opensource.org/licenses/MIT
     }
     using["page"] = using.page;
 
+    using.page.css = function (opt1, opts) {
+      inPageBlock = true;
+      switch (getType(opt1, true)) {
+        case "function":
+          opt1();
+          break;
+        default:
+          using.css(opt1, opt2);
+          break;
+      }
+      inPageBlock = false;
+    }
+    using.page["css"] = using.page.css;
+
     /** @param {function()} callback */
     using.ready = function (callback) {
       readyCallbacks.push(callback);
@@ -1354,7 +1368,7 @@ http://opensource.org/licenses/MIT
 
       return using;
     }
-    using["css"]["conditionally"] = using.css.conditionally;
+    using.css["conditionally"] = using.css.conditionally;
 
     /** @param {string} alias
         @param {string|Object|Array} src */
@@ -1362,7 +1376,7 @@ http://opensource.org/licenses/MIT
       //now going to make sure that it's known to be css in particular
       return using.alias(alias, fixSourceForCss(src));
     }
-    using["css"]["alias"] = using.css.alias;
+    using.css["alias"] = using.css.alias;
 
     //--------------------------------------------------------//
 
@@ -1370,8 +1384,8 @@ http://opensource.org/licenses/MIT
     if (!configuration.noConflict) global["using"] = using;
 
     //lastly, if some start scripts were included, call using on them
-    if (configuration.initialUsing) using(configuration.initialUsing);
-    if (configuration.initialStyleUsing) using.css(configuration.initialStyleUsing);
+    if (configuration.initialUsing) using.page(configuration.initialUsing);
+    if (configuration.initialStyleUsing) using.page.css(configuration.initialStyleUsing);
 
     return using;
   })(this, (this["using"] ? using["configuration"] : null));
