@@ -28,6 +28,8 @@ http://opensource.org/licenses/MIT
     /** @type {Array.<Dependency>} */
     unknownDependencies = [],
 
+    inPageBlock = false,
+
     document = global.document,
 
     //various reused type definitions
@@ -1182,7 +1184,7 @@ http://opensource.org/licenses/MIT
 
       dependencies = [];
 
-      if (initialUsing) {
+      if (initialUsing || inPageBlock) {
         //initially, we're going to create a base "page" type dependency. I may need to look into this further at some later time, 
         //since there can (and often are) multiple using calls coming directly from the page.
         executingDependency = new Dependency(page, page);
@@ -1259,7 +1261,7 @@ http://opensource.org/licenses/MIT
         if (callback) usingDep.addResolutionCallback(callback);
         usingDep.init();
 
-        if (!initialUsing && !ieLteTen()) {
+        if (!initialUsing && !inPageBlock && !ieLteTen()) {
           unknownDependencies.push(usingDep);
         }
       }
@@ -1270,6 +1272,21 @@ http://opensource.org/licenses/MIT
 
       return using;
     }
+
+    //forces using calls to be in the context of the page (as opposed to a script file)
+    using.page = function (opt1, opt2) {
+      inPageBlock = true;
+      switch (getType(opt1, true)) {
+        case "function":
+          opt1();
+          break;
+        default:
+          using(opt1, opt2);
+          break;
+      }
+      inPageBlock = false;
+    }
+    using["page"] = using.page;
 
     /** @param {function()} callback */
     using.ready = function (callback) {
