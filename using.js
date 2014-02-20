@@ -1287,6 +1287,7 @@ http://opensource.org/licenses/MIT
           break;
       }
       inPageBlock = false;
+      return using;
     }
     using["page"] = using.page;
 
@@ -1303,12 +1304,14 @@ http://opensource.org/licenses/MIT
           break;
       }
       inPageBlock = false;
+      return using;
     }
     using.page["css"] = using.page.css;
 
     /** @param {function()} callback */
     using.ready = function (callback) {
       readyCallbacks.push(callback);
+      return using;
     }
     using["ready"] = using.ready;
 
