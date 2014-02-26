@@ -450,6 +450,17 @@ http://opensource.org/licenses/MIT
       return configuration["browser"]["name"] === ie && configuration["browser"]["version"] <= 10;
     }
 
+    function isEmptyObject(obj) {
+      if (Object.keys) return Object.keys(obj).length === 0;
+
+      for (var prop in obj) {
+        if (obj.hasOwnProperty(prop))
+          return false;
+      }
+
+      return true;
+    }
+
     //--------------------------------------------------------//
 
 
@@ -602,7 +613,7 @@ http://opensource.org/licenses/MIT
         @param {string=} type 
         @param {boolean=} noExtension 
         @param {string=} backup */
-    function Dependency(src, type, noExtension, backup) {
+    function Dependency(src, type, noExtension, backup, name) {
       this.src = src;
       this.type = type || js;
       this.backup = backup;
@@ -610,6 +621,8 @@ http://opensource.org/licenses/MIT
       this.resolutionCallbacks = [];
       this.dependencyFor = [];
       this.dependentOn = [];
+      this.exports = {};
+      if (name) this.name = name;
     }
 
     extend(Dependency.prototype, {
@@ -632,7 +645,11 @@ http://opensource.org/licenses/MIT
       /** @protected */
       resolutionCallbacks: null,  //list of callbacks to run when the dependency is resolved,
       /** @private */
-      requestObj: null,
+      requestObj: null,           //reference to the DOM element that is including the script into the page
+      /** @protected */
+      exports: null,              //exports object for a file
+      /** @protected */
+      name: null,                 //name of this dependency's export
 
       /** @protected */
       destroy: function () {
@@ -666,7 +683,7 @@ http://opensource.org/licenses/MIT
 
       /** @protected */
       finalize: function () {
-        var _this = this, index;
+        var _this = this, index, exports, res;
 
         //can only finalize if successfully resolved
         if (_this.status !== resolved) return;
@@ -683,7 +700,17 @@ http://opensource.org/licenses/MIT
 
         //run any resolution callbacks
         for (index = 0; index < _this.resolutionCallbacks.length; index++) {
-          _this.resolutionCallbacks[index]();
+          exports = _this.resolutionCallbacks[index](_this.getDependencyExports(), _this.exports);
+          switch (getType(exports, true)) {
+            case object:
+              extend(_this.exports, exports);
+              break;
+              
+            default:
+              if (exports) _this.exports = exports;
+              break;
+          }
+          //if (exports && exports !== _this.exports) _this.exports = exports;
         }
 
         //now we are officially considered complete
@@ -700,6 +727,22 @@ http://opensource.org/licenses/MIT
         if (dependencyMap.testCompleteness()) {
           allReady();
         }
+      },
+
+      getDependencyExports: function() {
+        var _this = this, 
+            index, 
+            dependency, 
+            exports = {};
+
+        for (index = _this.dependentOn.length - 1; index >= 0; index--) {
+          dependency = _this.dependentOn[index];
+          if (!isEmptyObject(dependency.exports)) {
+            exports[dependency.name || dependency.src] = dependency.exports;
+          }
+        }
+
+        return exports;
       },
 
       /** @protected */
@@ -1145,16 +1188,7 @@ http://opensource.org/licenses/MIT
 
     //--------------------------------------------------------//
 
-
-
-    //public interface
-    //--------------------------------------------------------//
-    /** 
-      @param {string|Object} src
-      @param {function()=} callback
-      @param {Dependency=} hdnDepRef
-    */
-    function using(src, callback, hdnDepRef) {
+    function usingMain(src, callback, name, hdnDepRef) {
       var /** @type {Array.<string>} */     sourceList,
           /** @type {number} */             index,
           /** @type {number} */             index2,
@@ -1225,9 +1259,9 @@ http://opensource.org/licenses/MIT
               var myDep = dep,
                   dependsOn = sourceList[index]["dependsOn"];
 
-              using(dependsOn, function () {
+              usingMain(dependsOn, function () {
                 myDep.load();
-              }, myDep);
+              }, null, myDep);
               myDep.init();
             })();
           } else {
@@ -1249,6 +1283,7 @@ http://opensource.org/licenses/MIT
         if (callback && !hdnDepRef) {
           executingDependency.addResolutionCallback(callback);
         }
+        if (name) executingDependency.name = name;
       } else {
         //we don't currently know what the base file is, so create a fake one and have it get resolved later
         usingDep = new Dependency(usingContext + usingIndex++, usingContext);
@@ -1259,6 +1294,7 @@ http://opensource.org/licenses/MIT
         }
 
         if (callback) usingDep.addResolutionCallback(callback);
+        if (name) usingDep.name = name;
         usingDep.init();
 
         if (!initialUsing && !inPageBlock && !ieLteTen()) {
@@ -1269,9 +1305,26 @@ http://opensource.org/licenses/MIT
       if (configuration["browser"]["name"] === ie) {
         startPolling();
       }
+    }
+
+    //public interface
+    //--------------------------------------------------------//
+    /** 
+      @param {string|Object} src
+      @param {function()=} callback
+      @param {Dependency=} hdnDepRef
+    */
+    function using(src, callback) {
+      usingMain(src, callback);
 
       return using;
     }
+
+    using.amd = function(name, src, callback) {
+      usingMain(src, callback, name);
+    }
+
+    using["amd"] = using.amd;
 
     //forces using calls to be in the context of the page (as opposed to a script file)
     /** @param {Dependency|Array|function()} opt1 
