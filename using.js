@@ -1218,14 +1218,15 @@ http://opensource.org/licenses/MIT
 
       dependencies = [];
 
-      if (initialUsing || inPageBlock) {
+
+      if (hdnDepRef) {
+        //sneaky sneaky...
+        executingDependency = hdnDepRef;
+      } else if (initialUsing || inPageBlock) {
         //initially, we're going to create a base "page" type dependency. I may need to look into this further at some later time, 
         //since there can (and often are) multiple using calls coming directly from the page.
         executingDependency = new Dependency(page, page);
         executingDependency.init();
-      } else if (hdnDepRef) {
-        //sneaky sneaky...
-        executingDependency = hdnDepRef;
       } else {
         //earlier versions of IE may not execute scripts in the right order, but they do mark a script as interactive
         if (ieLteTen()) {
