@@ -777,7 +777,7 @@ http://opensource.org/licenses/MIT
           currentDep = _this.dependentOn[index];
           if (indexOf(path, currentDep) !== -1) {
             //if the current dependency was found in the path, just notify the user and keep going
-            emitError("Cyclic dependency found: " + _this.src);
+            emitError("Cyclic dependency found (non-terminal): " + (currentDep.name || currentDep.src));
             continue;
           }
 
@@ -936,6 +936,7 @@ http://opensource.org/licenses/MIT
 
         _this.status = loading;
 
+        //todo: add support for node and webworkers
         if (_this.type === js) {
           //using a script element for Javascript
           _this.requestObj = document.createElement("script");
@@ -950,6 +951,7 @@ http://opensource.org/licenses/MIT
           _this.requestObj.setAttribute("type", "text/css");
           _this.requestObj.setAttribute("href", resolveSourceLocation(_this.useBackup ? _this.backup : _this.src, _this.type, _this.noExtension));
           _this.requestObj.setAttribute("rel", "stylesheet");
+
 
 
         } else {
@@ -968,28 +970,6 @@ http://opensource.org/licenses/MIT
           }
         }
 
-
-        //register event handlers
-        //if (configuration["browser"]["name"] === ie && configuration["browser"]["version"] < 9) {
-        //  _this.requestObj.onreadystatechange = function () {
-
-        //    if (_this.requestObj.readyState === "complete" || _this.requestObj.readyState === "loaded") {
-        //      _this.requestObj.onreadystatechange = null;
-        //      _this.status = loaded;
-        //      _this.resolve();
-        //    }
-        //  }
-        //  if (_this.requestObj.attachEvent) {
-        //    _this.requestObj.attachEvent("onerror", onError);
-        //  }
-        //} else {
-        //  _this.requestObj.addEventListener("load", function () {
-        //    _this.status = loaded;
-        //    _this.resolve();
-        //  }, true);
-
-        //  _this.requestObj.addEventListener("error", onError, true);
-        //}
 
         if (_this.requestObj.addEventListener) {
           //can use addEventListener
@@ -1077,6 +1057,7 @@ http://opensource.org/licenses/MIT
           }
         }
 
+        return null;
       },
 
       /** @protected */
