@@ -60,6 +60,14 @@ http://opensource.org/licenses/MIT
     /** @type {string} */
     page = "page",
 
+    //valid environments
+    /** @type {string} */
+    webbrowser = "wb",
+    /** @type {string} */
+    webworker = "ww",
+    /** @type {string} */
+    node = "nd",
+
     /** @type {RegExp} */
     ieReg = /MSIE\s*(\d+)/i,
     /** @type {RegExp} */
@@ -271,6 +279,9 @@ http://opensource.org/licenses/MIT
     /** @param {Object} options */
     function configure(options) {
       configuration = extend({}, defaultConfiguration, configuration, options, detectBrowser());
+
+      //determining the environment so that later we will know what method to use to import files
+      configuration["environment"] = (typeof module !== 'undefined' && this.module !== module ? node : (global.document ? webbrowser : webworker));
 
       var scriptTag = locateUsingScriptTag();
 
