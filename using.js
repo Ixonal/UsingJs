@@ -472,6 +472,26 @@ http://opensource.org/licenses/MIT
       return true;
     }
 
+    //drills down through the given path, starting at the given object, creating any objects neccessary on the way. 
+    //splits on '.', '/', or '\' so that file paths are correctly split into namespaces
+    /** 
+      @protected
+      @param {Object} root
+      @param {string} path
+      @param {Object} content
+    */
+    function drillPathAndInsert(root, path, content) {
+      var pathParts = path.split(/[\.\/\\]+/), context = root, index;
+
+      for (index = 0; index < pathParts.length - 1; index++) {
+        context = (context[pathParts[index]] = context[pathParts[index]] || {});
+      }
+
+      context[pathParts[pathParts.length - 1]] = content;
+
+      return context;
+    }
+
     //--------------------------------------------------------//
 
 
@@ -721,7 +741,6 @@ http://opensource.org/licenses/MIT
               if (exports) _this.exports = exports;
               break;
           }
-          //if (exports && exports !== _this.exports) _this.exports = exports;
         }
 
         //now we are officially considered complete
@@ -740,6 +759,7 @@ http://opensource.org/licenses/MIT
         }
       },
 
+      /** @protected */
       getDependencyExports: function() {
         var _this = this, 
             index, 
@@ -749,7 +769,7 @@ http://opensource.org/licenses/MIT
         for (index = _this.dependentOn.length - 1; index >= 0; index--) {
           dependency = _this.dependentOn[index];
           if (!isEmptyObject(dependency.exports)) {
-            exports[dependency.name || dependency.src] = dependency.exports;
+            drillPathAndInsert(exports, dependency.name || dependency.src, dependency.exports);
           }
         }
 
@@ -1313,8 +1333,15 @@ http://opensource.org/licenses/MIT
       return using;
     }
 
-    using.amd = function(name, src, callback) {
+    using.amd = function (name, src, callback) {
+      if (arguments.length === 2) {
+        //in this case, it's really equivalent to a normal using call
+        callback = src;
+        src = name;
+        name = null;
+      }
       usingMain(src, callback, name);
+      return using;
     }
 
     using["amd"] = using.amd;
