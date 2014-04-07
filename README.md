@@ -6,9 +6,9 @@ however nothing did quite what I wanted it to do, so I created this. I also trie
 consolidate all the various features that I liked from other script loaders into one. 
 Please make sure to download from a release tag, rather than the master copy.
 
+
 To include UsingJs on the page:
 -------------------------------
-
 
     <script type="text/javascrpt" src="location/of/using.js" data-script-root="/script/root" data-using="'main'"></script>
 
@@ -22,13 +22,13 @@ Available attributes:
 *data-using-css:* will run a css using call on whatever is specified in it.  
 
 
-
 Basic syntax:
 -------------
 
     using("main", function() {
       //occurs after main.js has been included
     });
+
 
 With CSS:
 ---------
@@ -39,47 +39,51 @@ With CSS:
 
 <i>Well that's simple enough. How about something more helpful?</i><br/>
 
+
 Conditionals:
 -------------
-
 
     using.css.conditionally(browserName === "MSIE", "IeStyles");
     
     using.conditionally(!window.JSON, "JsonShim");
 
-     
-<br/><br/>
-<i>Spiffy. What if my script depends on multiple other scripts?</i><br/>
-<br/>
-<b>Using lists:</b>
-<pre>
-  using(["main", "foo", "bar"], function() {
-    //occurs after all dependencies have been included
-  });
-</pre>
-<br/>
-<i>OK, now what if I don't want to include huge lists of files or huge file names all over the place?</i><br/>
-<br/>
-<b>Using alias:</b>
-<pre>
-  using.alias("jquery", "http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js");
 
-  using("jquery", function() {
-    //occurs after jquery is loaded from the Google CDN
-  });
+<i>Spiffy. What if my script depends on multiple other scripts?</i>
 
-  using.alias("MainScripts", ["jquery", "foo", "bar"]);
 
-  using("MainScripts", function() {
-    //occurs after all dependencies in the MainScripts alias are loaded
-  });
-</pre>
+Using lists:
+------------
+
+    using(["main", "foo", "bar"], function() {
+      //occurs after all dependencies have been included
+    });
+
+
+<i>OK, now what if I don't want to include huge lists of files or huge file names all over the place?</i>
+
+
+Using alias:
+------------
+
+    using.alias("jquery", "http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js");
+    
+    using("jquery", function() {
+      //occurs after jquery is loaded from the Google CDN
+    });
+    
+    using.alias("MainScripts", ["jquery", "foo", "bar"]);
+    
+    using("MainScripts", function() {
+      //occurs after all dependencies in the MainScripts alias are loaded
+    });
+
 An alias may contain sources (in either string or object form) or even other aliases.
 
-<br/><br/>
-<i>So what's this about dependency tracking?</i><br/>
-<br/>
-<b>Dependency Tracking:</b><br/>
+<i>So what's this about dependency tracking?</i>
+
+
+Dependency Tracking:
+--------------------
 Anything within a using callback will only be run after all dependencies listed are ready. This only happens when those dependencies have all of their dependencies ready as well, on and on up the chain. These chains are created naturally through using calls or by specifying the 'dependsOn' property in a dependency declaration. <br/><br/>
 
 For example, assume there are three files, A.js, B.js, and C.js<br/><br/>
