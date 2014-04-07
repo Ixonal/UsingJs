@@ -5,28 +5,28 @@ Javascript async script loader and dependency tracker. I know that many others e
 however nothing did quite what I wanted it to do, so I created this. I also tried to 
 consolidate all the various features that I liked from other script loaders into one. 
 Please make sure to download from a release tag, rather than the master copy.
-
-
+  
+  
 ### To include UsingJs on the page: ###
 
     <script type="text/javascrpt" src="location/of/using.js" data-script-root="/script/root" data-using="'main'"></script>
-
-
+  
+  
 ### Available attributes: ###
 
 **data-script-root:** will specify where the root of the script directory is. The default is the server root ("/").  
 **data-using:** will run a using call on whatever is specified in it. This is the preferred entry point.  
 **data-style-root:** will specify where the root of the style (css) directory is. The default is the server root ("/").  
 **data-using-css:** will run a css using call on whatever is specified in it.  
-
-
+  
+  
 ### Basic syntax: ###
 
     using("main", function() {
       //occurs after main.js has been included
     });
-
-
+  
+  
 ### With CSS: ###
 
     using.css("main", function() {
@@ -34,8 +34,8 @@ Please make sure to download from a release tag, rather than the master copy.
     }
 
 *Well that's simple enough. How about something more helpful?*
-
-
+  
+  
 ### Conditionals: ###
 
     using.css.conditionally(browserName === "MSIE", "IeStyles");
@@ -44,8 +44,8 @@ Please make sure to download from a release tag, rather than the master copy.
 
 
 *Spiffy. What if my script depends on multiple other scripts?*
-
-
+  
+  
 ### Using lists: ###
 
     using(["main", "foo", "bar"], function() {
@@ -54,8 +54,8 @@ Please make sure to download from a release tag, rather than the master copy.
 
 
 *OK, now what if I don't want to include huge lists of files or huge file names all over the place?*
-
-
+  
+  
 ### Using alias: ###
 
     using.alias("jquery", "http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js");
@@ -73,8 +73,8 @@ Please make sure to download from a release tag, rather than the master copy.
 An alias may contain sources (in either string or object form) or even other aliases.
 
 *So what's this about dependency tracking?*
-
-
+  
+  
 ### Dependency Tracking: ###
 
 Anything within a using callback will only be run after all dependencies listed are ready. This only happens when those dependencies have all of their dependencies ready as well, on and on up the chain. These chains are created naturally through using calls or by specifying the 'dependsOn' property in a dependency declaration.
@@ -133,14 +133,15 @@ As you see, file dependencies will resolve themselves without the need to pre-re
       dependsOn: "Something" //A file on which this dependency is dependant  (string or dependency, optional)
     }
 
-*Of Note:*
+**Of Note:**
 The "dependsOn" property, as defined above, allows defining dependency chains for libraries which don't 
 use UsingJs. A good example of the use of this is including both jQuery and jQuery UI.
 
     using(["jQuery", { src: "jQueryUI", dependsOn: "jQuery" }], function() {
       //occurs after jQuery and then jQueryUI are loaded
     });
-
+  
+  
 ### Configurations: ###
 There are certain global options that can be configured:
 
