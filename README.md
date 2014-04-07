@@ -1,5 +1,5 @@
 UsingJs
--------
+=======
 
 Javascript async script loader and dependency tracker. I know that many others exist, 
 however nothing did quite what I wanted it to do, so I created this. I also tried to 
@@ -7,38 +7,46 @@ consolidate all the various features that I liked from other script loaders into
 Please make sure to download from a release tag, rather than the master copy.
 
 To include UsingJs on the page:
-===============================
+-------------------------------
 
 
-    <script type="text/javascrpt" src="location/of/using.js" data-script-root="/script/root" data-using="'main'"></script><br/>
-<b>Available attributes: </b><br/>
-<b>data-script-root:</b> will specify where the root of the script directory is. The default is the server root ("/").<br/>
-<b>data-using:</b> will run a using call on whatever is specified in it. This is the preferred entry point. <br/>
-<b>data-style-root:</b> will specify where the root of the style (css) directory is. The default is the server root ("/").<br/>
-<b>data-using-css:</b> will run a css using call on whatever is specified in it.<br/>
-<br/><br/>
-<b>Basic syntax:</b>
-<pre>
-  using("main", function() {
-    //occurs after main.js has been included
-  });
-</pre><br/>
-<b>With CSS:</b>
-<pre>
-  using.css("main", function() {
-    //occurs after main.css has been included
-  }
-</pre>
-<br/>
+    <script type="text/javascrpt" src="location/of/using.js" data-script-root="/script/root" data-using="'main'"></script>
+
+
+Available attributes:
+---------------------
+
+*data-script-root:* will specify where the root of the script directory is. The default is the server root ("/").  
+*data-using:* will run a using call on whatever is specified in it. This is the preferred entry point.  
+*data-style-root:* will specify where the root of the style (css) directory is. The default is the server root ("/").  
+*data-using-css:* will run a css using call on whatever is specified in it.  
+
+
+
+Basic syntax:
+-------------
+
+    using("main", function() {
+      //occurs after main.js has been included
+    });
+
+With CSS:
+---------
+
+    using.css("main", function() {
+      //occurs after main.css has been included
+    }
 
 <i>Well that's simple enough. How about something more helpful?</i><br/>
-<br/>
-<b>Conditionals:</b>
-<pre>
-  using.css.conditionally(browserName === "MSIE", "IeStyles");
 
-  using.conditionally(!window.JSON, "JsonShim");
-</pre>
+Conditionals:
+-------------
+
+
+    using.css.conditionally(browserName === "MSIE", "IeStyles");
+    
+    using.conditionally(!window.JSON, "JsonShim");
+
      
 <br/><br/>
 <i>Spiffy. What if my script depends on multiple other scripts?</i><br/>
