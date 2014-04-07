@@ -1,16 +1,16 @@
 UsingJs
-=======
+-------
 
 Javascript async script loader and dependency tracker. I know that many others exist, 
 however nothing did quite what I wanted it to do, so I created this. I also tried to 
 consolidate all the various features that I liked from other script loaders into one. 
 Please make sure to download from a release tag, rather than the master copy.
 
-<b>To include UsingJs on the page:</b><br\>
+To include UsingJs on the page:
+===============================
 
-<pre>
-  &lt;script type="text/javascrpt" src="location/of/using.js" data-script-root="/script/root" data-using="'main'"&gt;&lt;/script&gt;<br/>
-</pre>
+
+    <script type="text/javascrpt" src="location/of/using.js" data-script-root="/script/root" data-using="'main'"></script><br/>
 <b>Available attributes: </b><br/>
 <b>data-script-root:</b> will specify where the root of the script directory is. The default is the server root ("/").<br/>
 <b>data-using:</b> will run a using call on whatever is specified in it. This is the preferred entry point. <br/>
