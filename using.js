@@ -1235,18 +1235,15 @@ http://opensource.org/licenses/MIT
         //sneaky sneaky...
         executingDependency = hdnDepRef;
       } else if (initialUsing || inPageBlock) {
-        //initially, we're going to create a base "page" type dependency. I may need to look into this further at some later time, 
-        //since there can (and often are) multiple using calls coming directly from the page.
+        //the first using call and any calls made in the "page" context are to be dependent on the page itself
         executingDependency = new Dependency(page, page);
         executingDependency.init();
-      } else {
+      } else if (ieLteTen()) {
         //earlier versions of IE may not execute scripts in the right order, but they do mark a script as interactive
-        if (ieLteTen()) {
-          executingDependency = dependencyMap.locateInteractiveDependency();
-        } else if (document.currentScript) {
-          //newer browsers will keep track of the currently executing script
-          executingDependency = dependencyMap.locateCurrentScriptDependency();
-        }
+        executingDependency = dependencyMap.locateInteractiveDependency();
+      } else if ("currentScript" in document) {
+        //newer browsers will keep track of the currently executing script
+        executingDependency = dependencyMap.locateCurrentScriptDependency();
       }
 
       for (index = sourceList.length - 1; index >= 0; index--) {
