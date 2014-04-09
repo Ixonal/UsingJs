@@ -656,7 +656,7 @@ http://opensource.org/licenses/MIT
       if (name) this.name = name;
     }
 
-    extend(Dependency.prototype, {
+    extend(Dependency.prototype, /** @lendds {Dependency.prototype} */ {
       /** @protected */
       src: null,                  //location of this dependency
       /** @protected */
