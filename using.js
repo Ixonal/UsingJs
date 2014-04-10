@@ -254,13 +254,29 @@ http://opensource.org/licenses/MIT
       var /** @type {{name: ?string, version: ?number}} */ browser = {
         name: unknown,
         version: null
-      }, results;
+      }, results, v = 3, div, all;
 
       if (!global.navigator) return { "browser": browser };
 
       if (results = ieReg.exec(global.navigator.userAgent)) {
+        div = document.createElement('div');
+        all = div.getElementsByTagName('i');
+        while (
+          div.innerHTML = '<!--[if gt IE ' + (++v) + ']><i></i><![endif]-->',
+          all[0]
+        );
+
         browser.name = ie;
-        browser.version = +results[1];
+        
+        if (v > 4) {
+          //getting the version from feature detection
+          browser.version = v;
+        } else {
+          //getting the version from user agent sniffing
+          browser.version = +results[1];
+        }
+
+        //the rest use user agent sniffing, but really this is mainly for IE anyways
       } else if (results = chromeReg.exec(global.navigator.userAgent)) {
         browser.name = chrome;
         browser.version = +results[1];
@@ -278,7 +294,9 @@ http://opensource.org/licenses/MIT
     //configures the script
     /** @param {Object} options */
     function configure(options) {
-      configuration = extend({}, defaultConfiguration, configuration, options, detectBrowser());
+      configuration = extend({}, defaultConfiguration, configuration, options);
+
+      if (!configuration["browser"]) extend(configuration, detectBrowser());
 
       //determining the environment so that later we will know what method to use to import files
       configuration["environment"] = (typeof module !== 'undefined' && this.module !== module ? node : (global.document ? webbrowser : webworker));
