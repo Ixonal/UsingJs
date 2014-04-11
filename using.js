@@ -5,118 +5,123 @@ Released under the MIT Licence
 http://opensource.org/licenses/MIT
 */
 
-( /** @param {Window} global 
-      @param {Object} configuration 
-      @param {Object=} undefined */
-  function (global, configuration, undefined) {
+( /** @param {Undefined=} undefined */
+  function (undefined) {
     "use strict";
 
-    //default configuration settings
-    var defaultConfiguration = {
-      /** @type {boolean} */
-      "noConflict": false,
+    //global variable should be the context of "this" when this closure is run
+    var global = this || (0, eval)('this'),
+
+      configuration = global["using"] ? using["configuration"] : null,
+
+      Array = global["Array"],
+
+      //default configuration settings
+      defaultConfiguration = {
+        /** @type {boolean} */
+        "noConflict": false,
+        /** @type {string} */
+        "scriptRoot": "/",
+        /** @type {string} */
+        "styleRoot": "/",
+        /** @type {boolean} */
+        "cached": true,
+        /** @type {number} */
+        "pollingTimeout": 200
+      },
+
+      /** @type {Array.<Dependency>} */
+      unknownDependencies = [],
+
+      inPageBlock = false,
+
+      document = global.document,
+
+      //various reused type definitions
       /** @type {string} */
-      "scriptRoot": "/",
+      object = "object",
       /** @type {string} */
-      "styleRoot": "/",
-      /** @type {boolean} */
-      "cached": true,
+      string = "string",
+      /** @type {string} */
+      array = "array",
+      /** @type {string} */
+      arrayOfString = "array<string>",
+      /** @type {string} */
+      arrayOfDependency = "array<dependency>",
+      /** @type {string} */
+      dependency = "dependency",
+      /** @type {string} */
+      date = "date",
+      /** @type {string} */
+      regexp = "regexp",
+
+      //valid types
+      /** @type {string} */
+      js = "js",
+      /** @type {string} */
+      css = "css",
+      /** @type {string} */
+      usingContext = "usingContext",
+      /** @type {string} */
+      page = "page",
+
+      //valid environments
+      /** @type {string} */
+      webbrowser = "wb",
+      /** @type {string} */
+      webworker = "ww",
+      /** @type {string} */
+      node = "nd",
+
+      /** @type {RegExp} */
+      ieReg = /MSIE\s*(\d+)/i,
+      /** @type {RegExp} */
+      chromeReg = /Chrome\/(\d+)/i,
+      /** @type {RegExp} */
+      firefoxReg = /Firefox\/(\d+)/i,
+      /** @type {RegExp} */
+      safariReg = /Safari\/(\d+)/i,
+      /** @type {RegExp} */
+      jsReg = /\.((js)|(jscript))$/i,
+      /** @type {RegExp} */
+      cssReg = /\.(css)$/i,
+      /** @type {RegExp} */
+      domainReg = /([a-zA-Z0-9\.]*:)?\/\/([^\/]+)\/?/,
+
+      /** @type {string} */
+      unknown = "unknown",
+      /** @type {string} */
+      ie = "ie",
+      /** @type {string} */
+      firefox = "ff",
+      /** @type {string} */
+      chrome = "cr",
+      /** @type {string} */
+      safari = "sf",
+
       /** @type {number} */
-      "pollingTimeout": 200
-    },
+      uninitiated = 0,
+      /** @type {number} */
+      initiated = 1,
+      /** @type {number} */
+      loading = 2,
+      /** @type {number} */
+      loaded = 3,
+      /** @type {number} */
+      resolved = 4,
+      /** @type {number} */
+      withdrawn = 5,
+      /** @type {number} */
+      destroyed = 6,
+      /** @type {number} */
+      finalizing = 7,
+      /** @type {number} */
+      complete = 8,
+      /** @type {number} */
+      error = 9,
 
-    /** @type {Array.<Dependency>} */
-    unknownDependencies = [],
-
-    inPageBlock = false,
-
-    document = global.document,
-
-    //various reused type definitions
-    /** @type {string} */
-    object = "object",
-    /** @type {string} */
-    string = "string",
-    /** @type {string} */
-    array = "array",
-    /** @type {string} */
-    arrayOfString = "array<string>",
-    /** @type {string} */
-    arrayOfDependency = "array<dependency>",
-    /** @type {string} */
-    dependency = "dependency",
-    /** @type {string} */
-    date = "date",
-    /** @type {string} */
-    regexp = "regexp",
-
-    //valid types
-    /** @type {string} */
-    js = "js",
-    /** @type {string} */
-    css = "css",
-    /** @type {string} */
-    usingContext = "usingContext",
-    /** @type {string} */
-    page = "page",
-
-    //valid environments
-    /** @type {string} */
-    webbrowser = "wb",
-    /** @type {string} */
-    webworker = "ww",
-    /** @type {string} */
-    node = "nd",
-
-    /** @type {RegExp} */
-    ieReg = /MSIE\s*(\d+)/i,
-    /** @type {RegExp} */
-    chromeReg = /Chrome\/(\d+)/i,
-    /** @type {RegExp} */
-    firefoxReg = /Firefox\/(\d+)/i,
-    /** @type {RegExp} */
-    safariReg = /Safari\/(\d+)/i,
-    /** @type {RegExp} */
-    jsReg = /\.((js)|(jscript))$/i,
-    /** @type {RegExp} */
-    cssReg = /\.(css)$/i,
-    /** @type {RegExp} */
-    domainReg = /([a-zA-Z0-9\.]*:)?\/\/([^\/]+)\/?/,
-
-    /** @type {string} */
-    unknown = "unknown",
-    /** @type {string} */
-    ie = "ie",
-    /** @type {string} */
-    firefox = "ff",
-    /** @type {string} */
-    chrome = "cr",
-    /** @type {string} */
-    safari = "sf",
-
-    /** @type {number} */
-    uninitiated = 0,
-    /** @type {number} */
-    initiated = 1,
-    /** @type {number} */
-    loading = 2,
-    /** @type {number} */
-    loaded = 3,
-    /** @type {number} */
-    resolved = 4,
-    /** @type {number} */
-    withdrawn = 5,
-    /** @type {number} */
-    destroyed = 6,
-    /** @type {number} */
-    finalizing = 7,
-    /** @type {number} */
-    complete = 8,
-    /** @type {number} */
-    error = 9,
-
-    /** @type {string} */
-    interactive = "interactive";
+      /** @type {string} */
+      interactive = "interactive";
 
     //general form of dependency: 
     //{
@@ -182,7 +187,7 @@ http://opensource.org/licenses/MIT
       @param {Object} obj
     */
     function indexOf(arr, obj) {
-      if (global.Array.prototype.indexOf) return global.Array.prototype.indexOf.apply(arr, obj);
+      if (Array.prototype.indexOf) return Array.prototype.indexOf.apply(arr, obj);
 
       for (var index = 0; index < arr.length; index++) {
         if (arr[index] === obj) return index;
@@ -237,8 +242,8 @@ http://opensource.org/licenses/MIT
       }
     }
 
-    /** @param {Dependency|Object} dep1
-        @param {Dependency|Object} dep2 */
+    /** @param {Dependency|Object|string} dep1
+        @param {Dependency|Object|string} dep2 */
     function dependencyEquals(dep1, dep2) {
       return dep1["src"] === dep2["src"] &&
              dep1["type"] === dep2["type"] &&
@@ -264,7 +269,7 @@ http://opensource.org/licenses/MIT
         while (
           div.innerHTML = '<!--[if gt IE ' + (++v) + ']><i></i><![endif]-->',
           all[0]
-        );
+        ) { }
 
         browser.name = ie;
         
@@ -337,7 +342,7 @@ http://opensource.org/licenses/MIT
       var index, index2,
           allScriptTags = document.getElementsByTagName("script"),
           currentSrc,
-          usingJs = ["using.js", "using.min.js", configuration.srcName];
+          usingJs = ["using.js", "using.min.js", configuration["srcName"]];
 
       for (index = 0; index < allScriptTags.length; index++) {
         currentSrc = allScriptTags[index].src;
@@ -421,7 +426,8 @@ http://opensource.org/licenses/MIT
     }
 
     //see if we're working with a javascript or css include
-    /** @protected */
+    /** @protected 
+        @param {?string|Dependency} src */
     function getUsingType(src) {
       switch (getType(src)) {
         case string:
@@ -659,9 +665,10 @@ http://opensource.org/licenses/MIT
 
     /** @constructor 
         @param {string} src 
-        @param {string=} type 
-        @param {boolean=} noExtension 
-        @param {string=} backup */
+        @param {?string=} type 
+        @param {?boolean=} noExtension 
+        @param {?string=} backup 
+        @param {?string=} name */
     function Dependency(src, type, noExtension, backup, name) {
       this.src = src;
       this.type = type || js;
@@ -674,7 +681,7 @@ http://opensource.org/licenses/MIT
       if (name) this.name = name;
     }
 
-    extend(Dependency.prototype, /** @lendds {Dependency.prototype} */ {
+    extend(Dependency.prototype, /** @lends {Dependency.prototype} */ {
       /** @protected */
       src: null,                  //location of this dependency
       /** @protected */
@@ -867,7 +874,7 @@ http://opensource.org/licenses/MIT
       /** @param {function()} callback */
       addResolutionCallback: function (callback) {
         if (getType(callback) !== "function") throw new Error("dependency resolution callback function must be a function.");
-        if (this.stautus === resolved) {
+        if (this.status === resolved) {
           callback();
         } else {
           this.resolutionCallbacks.push(callback);
@@ -1070,11 +1077,11 @@ http://opensource.org/licenses/MIT
       /** @private */
       _dependencies: {},
       /** @private */
-      _depenencyCount: 0,
+      _dependencyCount: 0,
 
       /** @protected */
       empty: function () {
-        return this._depenencyCount === 0;
+        return this._dependencyCount === 0;
       },
 
       //locates a dependency based off of it being considered "interactive"
@@ -1095,7 +1102,7 @@ http://opensource.org/licenses/MIT
       //locates a dependency based off of the "currentScript" property
       /** @protected */
       locateCurrentScriptDependency: function () {
-        var _this = this, index, dependency, currentScript = document.currentScript;
+        var _this = this, index, dependency, currentScript = document["currentScript"];
 
         if (!currentScript.src) return null;
 
@@ -1143,7 +1150,7 @@ http://opensource.org/licenses/MIT
           }
         }
 
-        this._depenencyCount++;
+        this._dependencyCount++;
 
         return this;
       },
@@ -1218,6 +1225,12 @@ http://opensource.org/licenses/MIT
 
     //--------------------------------------------------------//
 
+    /**
+      @param {string|Object|Dependency|function()} src 
+      @param {?function()=} callback 
+      @param {?string=} name 
+      @param {?Dependency=} hdnDepRef 
+    */
     function usingMain(src, callback, name, hdnDepRef) {
       var /** @type {Array.<string>} */     sourceList,
           /** @type {number} */             index,
@@ -1340,7 +1353,6 @@ http://opensource.org/licenses/MIT
     /** 
       @param {string|Object} src
       @param {function()=} callback
-      @param {Dependency=} hdnDepRef
     */
     function using(src, callback) {
       usingMain(src, callback);
@@ -1381,7 +1393,7 @@ http://opensource.org/licenses/MIT
 
     /** @param {Dependency|Array|function()} opt1 
         @param {function()=} opt2 */
-    using.page.css = function (opt1, opts) {
+    using.page.css = function (opt1, opt2) {
       inPageBlock = true;
       switch (getType(opt1, true)) {
         case "function":
@@ -1476,11 +1488,11 @@ http://opensource.org/licenses/MIT
     //--------------------------------------------------------//
 
 
-    if (!configuration.noConflict) global["using"] = using;
+    if (!configuration["noConflict"]) global["using"] = using;
 
     //lastly, if some start scripts were included, call using on them
-    if (configuration.initialUsing) using.page(configuration.initialUsing);
-    if (configuration.initialStyleUsing) using.page.css(configuration.initialStyleUsing);
+    if (configuration["initialUsing"]) using.page(configuration["initialUsing"]);
+    if (configuration["initialStyleUsing"]) using.page.css(configuration["initialStyleUsing"]);
 
     return using;
-  })(this, (this["using"] ? using["configuration"] : null));
+  })();
