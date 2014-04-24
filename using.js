@@ -486,6 +486,8 @@ http://opensource.org/licenses/MIT
     }
 
     function isEmptyObject(obj) {
+      if (typeof (obj) != object) return false; //not an object to begin with, so being empty is meaningless
+
       if (Object.keys) return Object.keys(obj).length === 0;
 
       for (var prop in obj) {
@@ -1124,7 +1126,9 @@ http://opensource.org/licenses/MIT
             return this._dependencies[dep] || null;
 
           case dependency:
-            return this._dependencies[dep.src] || null;
+            if (!this._dependencies[dep["src"]]) return null;
+            if (this._dependencies[dep["src"]].type === (dep["type"] || js)) return this._dependencies[dep["src"]];
+            return null;
 
           default:
             return null;
@@ -1145,7 +1149,7 @@ http://opensource.org/licenses/MIT
               break;
 
             case dependency:
-              this._dependencies[dep.src] = dep;
+              this._dependencies[dep["src"]] = dep;
               break;
           }
         }
@@ -1165,7 +1169,7 @@ http://opensource.org/licenses/MIT
             break;
 
           case dependency:
-            delete this._dependencies[dep.src];
+            delete this._dependencies[dep["src"]];
             dep.destroy();
             break;
 
