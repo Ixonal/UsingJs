@@ -130,7 +130,8 @@ As you see, file dependencies will resolve themselves without the need to pre-re
       src: "Test", //source string as above                                  (string, required)
       type: "js or css", //the type of file                                  (string, optional)
       conditionally: condition, //whether or not to register this dependency (boolean, optional)
-      dependsOn: "Something" //A file on which this dependency is dependant  (string or dependency, optional)
+      dependsOn: "Something" //A file on which this dependency is dependant  (string, dependency, or array of either, optional)
+      backup: "alternate/location" //backup source location                  (string, optional)
     }
 
 **Of Note:**
@@ -141,6 +142,11 @@ use UsingJs. A good example of the use of this is including both jQuery and jQue
       //occurs after jQuery and then jQueryUI are loaded
     });
   
+**Also:**
+The "backup" property defines a source location to attempt to load from if the location in the "src" property has an error. This is helpful in avoiding the issue where you attempt to load a dependency from a CDN, but the CDN is temporarily down.
+
+    using.alias("jQuery", { src: "//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js", backup: "Lib/jquery-1.11.0.min" });
+
   
 ### Configurations: ###
 There are certain global options that can be configured:
