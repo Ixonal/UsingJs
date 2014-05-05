@@ -124,7 +124,9 @@ As you see, file dependencies will resolve themselves without the need to pre-re
 
 *Anything else I should know?*
 
-*Dependencies may be described using either a string (as above) or an object of the following form:*
+### Advanced Usage ###
+
+Dependencies may be described using either a string (as above) or an object of the following form:
 
     {
       src: "Test", //source string as above                                  (string, required)
@@ -135,8 +137,7 @@ As you see, file dependencies will resolve themselves without the need to pre-re
     }
 
 **Of Note:**
-The "dependsOn" property, as defined above, allows defining dependency chains for libraries which don't 
-use UsingJs. A good example of the use of this is including both jQuery and jQuery UI.
+The "dependsOn" property, as defined above, allows defining dependency chains for libraries which don't use UsingJs. A good example of the use of this is including both jQuery and jQuery UI. This property will take anything that would go into a normal using call, so it may also contain arrays of dependencies and aliases.
 
     using(["jQuery", { src: "jQueryUI", dependsOn: "jQuery" }], function() {
       //occurs after jQuery and then jQueryUI are loaded
@@ -152,6 +153,7 @@ The "backup" property defines a source location to attempt to load from if the l
 There are certain global options that can be configured:
 
     {
+      srcName: "some/file.js", //string, name of the using script file (if changed)
       noConflict: false, //boolean, whether or not using is inserted into the global scope
       scriptRoot: "/", //string, default script root
       styleRoot: "/", //string, default style root
