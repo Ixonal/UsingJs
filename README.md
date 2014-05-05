@@ -124,7 +124,7 @@ As you see, file dependencies will resolve themselves without the need to pre-re
 
 *Anything else I should know?*
 
-### Advanced Usage ###
+### Advanced Dependencies ###
 
 Dependencies may be described using either a string (as above) or an object of the following form:
 
