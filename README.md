@@ -130,7 +130,7 @@ Dependencies may be described using either a string (as above) or an object of t
 
     {
       src: "Test", //source string as above                                  (string, required)
-      type: "js or css", //the type of file                                  (string, optional)
+      type: "js or css", //the type of file ("js" by default)                (string, optional)
       conditionally: condition, //whether or not to register this dependency (boolean, optional)
       dependsOn: "Something" //A file on which this dependency is dependant  (string, dependency, or array of either, optional)
       backup: "alternate/location" //backup source location                  (string, optional)
