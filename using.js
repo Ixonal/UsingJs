@@ -27,7 +27,9 @@ http://opensource.org/licenses/MIT
         /** @type {boolean} */
         "cached": true,
         /** @type {number} */
-        "pollingTimeout": 200
+        "pollingTimeout": 200,
+        /** @type {boolean} */
+        "debug": false
       },
 
       /** @type {Array.<Dependency>} */
@@ -835,7 +837,19 @@ http://opensource.org/licenses/MIT
           currentDep = _this.dependentOn[index];
           if (indexOf(path, currentDep) !== -1) {
             //if the current dependency was found in the path, just notify the user and keep going
-            emitError("Cyclic dependency found (non-terminal): " + (currentDep.name || currentDep.src));
+            if(configuration["debug"]) {
+              var errorMsg = "Cyclic dependency found (non-terminal): \n", errorIndex;
+
+              for(errorIndex = 0; errorIndex < path.length; errorIndex++) {
+                errorMsg += (path[errorIndex] === currentDep) ? "--->" : "    ";
+                errorMsg += (path[errorIndex].name || path[errorIndex].src) + "\n";
+              }
+
+              errorMsg += "--->" + (currentDep.name || currentDep.src);
+
+              emitError(errorMsg);
+              //emitError("Cyclic dependency found (non-terminal): " + (currentDep.name || currentDep.src));
+            }
             continue;
           }
 
