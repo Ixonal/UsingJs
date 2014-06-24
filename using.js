@@ -1395,6 +1395,10 @@ http://opensource.org/licenses/MIT
         src = name;
         name = null;
       }
+
+      //going to implicitly alias the dependency, so that calls to that module will reference the correct dependency
+      if (getType(name, true) === string && name !== src) using.alias(name, src);
+
       usingMain(src, callback, name);
       return using;
     }
