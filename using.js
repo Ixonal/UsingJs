@@ -63,9 +63,9 @@ http://opensource.org/licenses/MIT
       /** @type {string} */
       css = "css",
       /** @type {string} */
-      usingContext = "usingContext",
+      usingContext = "<||usingContext||>",
       /** @type {string} */
-      page = "page",
+      page = "<||page||>",
 
       //valid environments
       /** @type {string} */
@@ -336,7 +336,7 @@ http://opensource.org/licenses/MIT
     }
 
     function emitError(err) {
-      if (global["console"]) global["console"]["error"](err);
+      if (configuration["debug"] && global["console"]) global["console"]["error"](err);
     }
 
     //finds the script tag that's referencing "using.js"
@@ -792,13 +792,13 @@ http://opensource.org/licenses/MIT
       getDependencyExports: function() {
         var _this = this, 
             index, 
-            dependency, 
+            dep, 
             exports = {};
 
         for (index = _this.dependentOn.length - 1; index >= 0; index--) {
-          dependency = _this.dependentOn[index];
-          if (!isEmptyObject(dependency.exports)) {
-            drillPathAndInsert(exports, dependency.name || dependency.src, dependency.exports);
+          dep = _this.dependentOn[index];
+          if (!isEmptyObject(dep.exports)) {
+            drillPathAndInsert(exports, dep.name || dep.src, dep.exports);
           }
         }
 
@@ -848,7 +848,6 @@ http://opensource.org/licenses/MIT
               errorMsg += "--->" + (currentDep.name || currentDep.src);
 
               emitError(errorMsg);
-              //emitError("Cyclic dependency found (non-terminal): " + (currentDep.name || currentDep.src));
             }
             continue;
           }
@@ -890,7 +889,7 @@ http://opensource.org/licenses/MIT
       /** @param {function()} callback */
       addResolutionCallback: function (callback) {
         if (getType(callback) !== "function") throw new Error("dependency resolution callback function must be a function.");
-        if (this.status === resolved) {
+        if (this.status === finalizing || this.status === complete) {
           callback();
         } else {
           this.resolutionCallbacks.push(callback);
@@ -937,30 +936,29 @@ http://opensource.org/licenses/MIT
       resolve: function () {
         if (this.status !== loaded) return;
 
-        var _this = this, index, index2, dependencies, dependency, storedDependencies, dependentOn, dependencyIndex;
+        var _this = this, index, dep, dependentOn;
 
         //incude was loaded and the code should have been executed, so find any unknown dependencies and associate them with this dependency
-        while ((dependency = unknownDependencies.shift()) !== undefined) {
+        while ((dep = unknownDependencies.shift()) !== undefined) {
           //we only want using contexts that haven't been destroyed
-          if (dependency.type !== usingContext || dependency.status === destroyed) continue;
-          storedDependencies = [];
+          if (dep.type !== usingContext || dep.status === destroyed) continue;
 
-          for (index2 = dependency.dependentOn.length - 1; index2 >= 0; index2--) {
+          for (index = dep.dependentOn.length - 1; index >= 0; index--) {
             //move any observed dependencies over that aren't already included
-            dependentOn = dependency.dependentOn[index2];
+            dependentOn = dep.dependentOn[index];
             _this.dependOn(dependentOn);
 
             //now remove the unknown dependency from the inner dependency's observing dependencies list and add this one
-            dependency.removeDependencyOn(dependentOn);
+            dep.removeDependencyOn(dependentOn);
           }
 
           //move all associated callbacks to this dependency
-          for (index2 = dependency.resolutionCallbacks.length - 1; index2 >= 0; index2--) {
-            _this.addResolutionCallback(dependency.resolutionCallbacks[index2]);
+          for (index = dep.resolutionCallbacks.length - 1; index >= 0; index--) {
+            _this.addResolutionCallback(dep.resolutionCallbacks[index]);
           }
 
           //at this point, remove the outstanding using context
-          dependencyMap.removeDependency(dependency);
+          dependencyMap.removeDependency(dep);
         }
 
         _this.status = resolved;
@@ -1100,15 +1098,21 @@ http://opensource.org/licenses/MIT
         return this._dependencyCount === 0;
       },
 
+      //locates the "page" dependency
+      /** @protected */
+      locatePageDependency: function() {
+        return this._dependencies[page];
+      },
+
       //locates a dependency based off of it being considered "interactive"
       /** @protected */
       locateInteractiveDependency: function () {
-        var index, dependency;
+        var index, dep;
 
         for (index in this._dependencies) {
-          dependency = this._dependencies[index];
-          if (dependency.requestObj && dependency.requestObj.readyState === interactive) {
-            return dependency;
+          dep = this._dependencies[index];
+          if (dep.requestObj && dep.requestObj.readyState === interactive) {
+            return dep;
           }
         }
 
@@ -1118,14 +1122,14 @@ http://opensource.org/licenses/MIT
       //locates a dependency based off of the "currentScript" property
       /** @protected */
       locateCurrentScriptDependency: function () {
-        var _this = this, index, dependency, currentScript = document["currentScript"];
+        var _this = this, index, dep, currentScript = document["currentScript"];
 
         if (!currentScript.src) return null;
 
         for (index in _this._dependencies) {
-          dependency = _this._dependencies[index];
-          if (dependency.requestObj && dependency.requestObj === currentScript) {
-            return dependency;
+          dep = _this._dependencies[index];
+          if (dep.requestObj && dep.requestObj === currentScript) {
+            return dep;
           }
         }
 
@@ -1285,8 +1289,14 @@ http://opensource.org/licenses/MIT
         executingDependency = hdnDepRef;
       } else if (initialUsing || inPageBlock) {
         //the first using call and any calls made in the "page" context are to be dependent on the page itself
-        executingDependency = new Dependency(page, page);
-        executingDependency.init();
+        executingDependency = dependencyMap.locatePageDependency();
+        if(!executingDependency) {
+          executingDependency = new Dependency(page, page);
+          dependencyMap.addDependency(executingDependency);
+          executingDependency.init();
+        }
+        //the page dependency must now reevaluate whether or not it's complete, so it must be in the resolved state
+        if(executingDependency.status === complete) executingDependency.status = resolved;
       } else if (ieLteTen()) {
         //earlier versions of IE may not execute scripts in the right order, but they do mark a script as interactive
         executingDependency = dependencyMap.locateInteractiveDependency();
