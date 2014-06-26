@@ -306,11 +306,11 @@ http://opensource.org/licenses/MIT
       if (!configuration["browser"]) extend(configuration, detectBrowser());
 
       //determining the environment so that later we will know what method to use to import files
-      configuration["environment"] = (typeof module !== 'undefined' && this.module !== module ? node : (global.document ? webbrowser : webworker));
+      configuration["environment"] = (typeof module !== 'undefined' && this.module !== module ? node : (global['document'] ? webbrowser : webworker));
 
       var scriptTag = locateUsingScriptTag();
 
-      if (scriptTag === null) throw new Error("Could not locate the using.js script include. \nPlease specify the name of the source file in the configuration.");
+      if (!scriptTag) throw new Error("Could not locate the using.js script include. \nPlease specify the name of the source file in the configuration.");
 
       var scriptRoot = scriptTag.getAttribute("data-script-root"),
           styleRoot = scriptTag.getAttribute("data-style-root"),
@@ -331,6 +331,7 @@ http://opensource.org/licenses/MIT
       }
       configuration["styleRoot"] = styleRoot || "/";
 
+      //I know eval is evil, but in this case, the dev would be doing it to his/her self.
       if (initialUsing) configuration["initialUsing"] = global["eval"]("(" + initialUsing + ")");
       if (initialStyleUsing) configuration["initialStyleUsing"] = global["eval"]("(" + initialStyleUsing + ")");
     }
