@@ -345,14 +345,15 @@ http://opensource.org/licenses/MIT
       var index, index2,
           allScriptTags = document.getElementsByTagName("script"),
           currentSrc,
-          usingJs = ["using.js", "using.min.js", configuration["srcName"]];
+          usingJs = ["using.js", "using.min.js", configuration["srcName"]], 
+          currentSrc2;
 
       for (index = 0; index < allScriptTags.length; index++) {
         currentSrc = allScriptTags[index].src;
         for (index2 = 0; index2 < usingJs.length; index2++) {
-          if (currentSrc.substr(currentSrc.length - usingJs[index2].length, usingJs[index2].length) === usingJs[index2]) return allScriptTags[index];
+          currentSrc2 = usingJs[index2];
+          if (currentSrc2 && currentSrc.substr(currentSrc.length - currentSrc2.length, currentSrc2.length) === currentSrc2) return allScriptTags[index];
         }
-
       }
 
       return null;
