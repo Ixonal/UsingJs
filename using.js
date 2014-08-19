@@ -785,7 +785,7 @@ http://opensource.org/licenses/MIT
         }
 
         //check to see if everything else is ready
-        if (dependencyMap.testCompleteness()) {
+        if (_this.type !== page && dependencyMap.testCompleteness()) {
           allReady();
         }
       },
