@@ -40,39 +40,54 @@ http://opensource.org/licenses/MIT
       document = global.document,
 
       //various reused type definitions
-      /** @type {string} */
+      /** @type {string} 
+          @const */
       object = "object",
-      /** @type {string} */
+      /** @type {string} 
+          @const */
       string = "string",
-      /** @type {string} */
+      /** @type {string} 
+          @const */
       array = "array",
-      /** @type {string} */
+      /** @type {string} 
+          @const */
       arrayOfString = "array<string>",
-      /** @type {string} */
+      /** @type {string} 
+          @const */
       arrayOfDependency = "array<dependency>",
-      /** @type {string} */
+      /** @type {string} 
+          @const */
       dependency = "dependency",
-      /** @type {string} */
+      /** @type {string} 
+          @const */
       date = "date",
-      /** @type {string} */
+      /** @type {string} 
+          @const */
       regexp = "regexp",
 
       //valid types
-      /** @type {string} */
+      /** @type {string} 
+          @const */
       js = "js",
-      /** @type {string} */
+      /** @type {string} 
+          @const */
       css = "css",
-      /** @type {string} */
+      /** @type {string} 
+          @const */
       usingContext = "<||usingContext||>",
-      /** @type {string} */
+      /** @type {string} 
+          @const */
       page = "<||page||>",
 
       //valid environments
-      /** @type {string} */
+      /** @type {string} 
+          @const */
       webbrowser = "wb",
-      /** @type {string} */
+      /** @type {string} 
+          @const */
       webworker = "ww",
-      /** @type {string} */
+      /** @type {string} 
+          @const */
       node = "nd",
 
       /** @type {RegExp} */
@@ -90,36 +105,51 @@ http://opensource.org/licenses/MIT
       /** @type {RegExp} */
       domainReg = /([a-zA-Z0-9\.]*:)?\/\/([^\/]+)\/?/,
 
-      /** @type {string} */
+      /** @type {string} 
+          @const */
       unknown = "unknown",
-      /** @type {string} */
+      /** @type {string} 
+          @const */
       ie = "ie",
-      /** @type {string} */
+      /** @type {string} 
+          @const */
       firefox = "ff",
-      /** @type {string} */
+      /** @type {string} 
+          @const */
       chrome = "cr",
-      /** @type {string} */
+      /** @type {string} 
+          @const */
       safari = "sf",
 
-      /** @type {number} */
+      /** @type {number} 
+          @const */
       uninitiated = 0,
-      /** @type {number} */
+      /** @type {number} 
+          @const */
       initiated = 1,
-      /** @type {number} */
+      /** @type {number} 
+          @const */
       loading = 2,
-      /** @type {number} */
+      /** @type {number} 
+          @const */
       loaded = 3,
-      /** @type {number} */
+      /** @type {number} 
+          @const */
       resolved = 4,
-      /** @type {number} */
+      /** @type {number} 
+          @const */
       withdrawn = 5,
-      /** @type {number} */
+      /** @type {number} 
+          @const */
       destroyed = 6,
-      /** @type {number} */
+      /** @type {number} 
+          @const */
       finalizing = 7,
-      /** @type {number} */
+      /** @type {number} 
+          @const */
       complete = 8,
-      /** @type {number} */
+      /** @type {number} 
+          @const */
       error = 9,
 
       /** @type {string} */
@@ -338,6 +368,10 @@ http://opensource.org/licenses/MIT
 
     function emitError(err) {
       if (configuration["debug"] && global["console"]) global["console"]["error"](err);
+    }
+
+    function emitWarning(warn) {
+      if (configuration["debug"] && global["console"]) global["console"]["warn"](warn);
     }
 
     //finds the script tag that's referencing "using.js"
@@ -745,7 +779,7 @@ http://opensource.org/licenses/MIT
 
       /** @protected */
       finalize: function () {
-        var _this = this, index, exports, res;
+        var _this = this, index, exports;
 
         //can only finalize if successfully resolved
         if (_this.status !== resolved) return;
@@ -849,7 +883,7 @@ http://opensource.org/licenses/MIT
 
               errorMsg += "--->" + (currentDep.name || currentDep.src);
 
-              emitError(errorMsg);
+              emitWarning(errorMsg);
             }
             continue;
           }
@@ -1033,7 +1067,7 @@ http://opensource.org/licenses/MIT
         //general error handler
         onError = function () {
           if (_this.backup && !_this.useBackup) {
-            emitError("Error occurred while loading " + _this.src + ", attempting to load " + _this.backup);
+            emitWarning("Error occurred while loading " + _this.src + ", attempting to load " + _this.backup);
             _this.useBackup = true;
             _this.status = initiated;
             _this.load();
