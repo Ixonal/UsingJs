@@ -91,7 +91,7 @@ http://opensource.org/licenses/MIT
       node = "nd",
 
       /** @type {RegExp} */
-      ieReg = /MSIE\s*(\d+)/i,
+      ieReg = /(MSIE\s*(\d+))|(rv:(\d+\.?\d*))/i,
       /** @type {RegExp} */
       chromeReg = /Chrome\/(\d+)/i,
       /** @type {RegExp} */
@@ -310,7 +310,7 @@ http://opensource.org/licenses/MIT
           browser.version = v;
         } else {
           //getting the version from user agent sniffing
-          browser.version = +results[1];
+          browser.version = +(results[2] || results[4]);
         }
 
         //the rest use user agent sniffing, but really this is mainly for IE anyways
@@ -979,6 +979,10 @@ http://opensource.org/licenses/MIT
           //we only want using contexts that haven't been destroyed
           if (dep.type !== usingContext || dep.status === destroyed) continue;
 
+          //looks like these were set, but since we didn't have a hard reference before, we couldn't assign them properly. go ahead and do it here
+          if(dep.name) _this.name = dep.name;
+          if(dep.noExtension) _this.noExtension = dep.noExtension;
+
           for (index = dep.dependentOn.length - 1; index >= 0; index--) {
             //move any observed dependencies over that aren't already included
             dependentOn = dep.dependentOn[index];
@@ -1352,7 +1356,7 @@ http://opensource.org/licenses/MIT
               break;
             case dependency:
               delayInit = sourceList[index]["dependsOn"];
-              dep = new Dependency(sourceList[index]["src"], getUsingType(sourceList[index]), sourceList[index]["noExtension"], sourceList[index]["backup"]);
+              dep = new Dependency(sourceList[index]["src"], getUsingType(sourceList[index]), sourceList[index]["noExtension"], sourceList[index]["backup"], sourceList[index]["name"]);
               break;
           }
           dependencyMap.addDependency(dep);
@@ -1391,7 +1395,7 @@ http://opensource.org/licenses/MIT
         if (name) executingDependency.name = name;
       } else {
         //we don't currently know what the base file is, so create a fake one and have it get resolved later
-        usingDep = new Dependency(usingContext + usingIndex++, usingContext);
+        usingDep = new Dependency(usingContext + usingIndex++, usingContext, src["noExtension"], src["backup"], name);
         dependencyMap.addDependency(usingDep);
 
         for (index = dependencies.length - 1; index >= 0; index--) {
