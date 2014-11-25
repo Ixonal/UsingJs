@@ -1,6 +1,6 @@
 /*
 UsingJs script loader and dependency tracker
-Copyright 2013 Benjamin McGregor (Ixonal)
+Copyright 2013-2014 Benjamin McGregor (Ixonal)
 Released under the MIT Licence
 http://opensource.org/licenses/MIT
 */
@@ -28,6 +28,8 @@ http://opensource.org/licenses/MIT
         "cached": true,
         /** @type {number} */
         "pollingTimeout": 200,
+        /** @type {boolean} */
+        "minified": false,
         /** @type {boolean} */
         "debug": false
       },
@@ -405,7 +407,7 @@ http://opensource.org/licenses/MIT
         //there is a domain specified
         if (global.location) {
           //see if the protocol and host are the same
-          return domain && (domain[1] !== global.location.protocol || domain[2] !== global.location.host);
+          return domain[1] !== global.location.protocol || domain[2] !== global.location.host;
         } else {
           //just assuming it's another domain here
           return true;
@@ -416,21 +418,28 @@ http://opensource.org/licenses/MIT
       }
     }
 
+    //todo: move this functionality into the dependency prototype
     /**
       @param {string} src
       @param {string} type
       @param {boolean=} noExtension
     */
-    function resolveSourceLocation(src, type, noExtension) {
+    function resolveSourceLocation(src, type, noExtension, minified) {
       //for simplicity's sake, I'm assuming src is just a single string
       var retVal = "" + src,
           timestamp = new Date().getTime();
       if (isCrossServerLocation(retVal)) {
-        //the request is for another domain probly a CDN
+        //the request is for another domain probly a CDN (type, noExtension, and minified are ignored)
         return retVal + (!configuration["cached"] ? (retVal.indexOf("?") === -1 ? "?_t=" : "&_t=") + timestamp : "");
       } else {
         //looks like a relative path. Make sure the script root and type are included.
-        if (!noExtension && retVal.substr(retVal.length - type.length) !== type) {
+
+        //ensure we're looking at the minified version, if needed
+        if (!noExtension && minified && retVal.indexOf("min") === -1) {
+          retVal += ".min";
+        }
+
+        if (!noExtension && type !== usingContext && type !== page && retVal.substr(retVal.length - type.length) !== type) {
           //type is not already included, add it
           retVal += "." + type;
         }
@@ -477,6 +486,7 @@ http://opensource.org/licenses/MIT
             return js; //should probably set this as unknown at some point
           }
         case dependency:
+          if(src.type === page || src.type === usingContext) return null;
           return src.type || js;
       }
     }
@@ -709,7 +719,7 @@ http://opensource.org/licenses/MIT
         @param {?boolean=} noExtension 
         @param {?string=} backup 
         @param {?string=} name */
-    function Dependency(src, type, noExtension, backup, name) {
+    function Dependency(src, type, noExtension, backup, name, minified) {
       this.src = src;
       this.type = type || js;
       this.backup = backup;
@@ -719,6 +729,7 @@ http://opensource.org/licenses/MIT
       this.dependentOn = [];
       this.exports = {};
       if (name) this.name = name;
+      this.minified = minified !== undefined ? minified : configuration["minified"];
     }
 
     extend(Dependency.prototype, /** @lends {Dependency.prototype} */ {
@@ -746,6 +757,8 @@ http://opensource.org/licenses/MIT
       exports: null,              //exports object for a file
       /** @protected */
       name: null,                 //name of this dependency's export
+      /** @protected */
+      minified: false,            //whether or not to try to load a minified version of the source (appends .min to the src)
 
       /** @protected */
       destroy: function () {
@@ -980,8 +993,9 @@ http://opensource.org/licenses/MIT
           if (dep.type !== usingContext || dep.status === destroyed) continue;
 
           //looks like these were set, but since we didn't have a hard reference before, we couldn't assign them properly. go ahead and do it here
-          if(dep.name) _this.name = dep.name;
-          if(dep.noExtension) _this.noExtension = dep.noExtension;
+          if (dep.name) _this.name = dep.name;
+          if (dep.noExtension) _this.noExtension = dep.noExtension;
+          if (dep.minified !== undefined) _this.minified = dep.minified;
 
           for (index = dep.dependentOn.length - 1; index >= 0; index--) {
             //move any observed dependencies over that aren't already included
@@ -1008,12 +1022,22 @@ http://opensource.org/licenses/MIT
 
       /** @protected */
       error: function () {
-        var _this = this, index, dep, parent = arguments[0], message;
+        var _this = this, index, dep, target, parent = arguments[0], message;
 
         _this.status = error;
 
-        message = "UsingJs: An error has occurred when loading " + _this.src;
-        if (parent) message += " - dependency " + parent.src + " registered an error";
+        target = _this.useBackup ? _this.backup : _this.src;
+        if (target === page) target = "page";
+        if(target === usingContext) target = "using context";
+
+        message = "UsingJs: An error has occurred when loading " + target;
+
+        if (parent) {
+          target = parent.useBackup ? parent.backup : parent.src;
+          if (target === page) target = "page";
+          if (target === usingContext) target = "using context";
+          message += " - dependency " + target + " registered an error";
+        }
         emitError(message);
 
         for (index = _this.dependencyFor.length - 1; index >= 0; index--) {
@@ -1050,7 +1074,7 @@ http://opensource.org/licenses/MIT
         if (_this.type === js) {
           //using a script element for Javascript
           _this.requestObj = document.createElement("script");
-          _this.requestObj.setAttribute("src", resolveSourceLocation(_this.useBackup ? _this.backup : _this.src, _this.type, _this.noExtension));
+          _this.requestObj.setAttribute("src", resolveSourceLocation(_this.useBackup ? _this.backup : _this.src, _this.type, _this.noExtension, this.minified));
           _this.requestObj.setAttribute("type", "text/javascript");
           _this.requestObj.setAttribute("defer", "false");
           _this.requestObj.setAttribute("async", "true");
@@ -1059,7 +1083,7 @@ http://opensource.org/licenses/MIT
           //using a link element for CSS
           _this.requestObj = document.createElement("link");
           _this.requestObj.setAttribute("type", "text/css");
-          _this.requestObj.setAttribute("href", resolveSourceLocation(_this.useBackup ? _this.backup : _this.src, _this.type, _this.noExtension));
+          _this.requestObj.setAttribute("href", resolveSourceLocation(_this.useBackup ? _this.backup : _this.src, _this.type, _this.noExtension, this.minified));
           _this.requestObj.setAttribute("rel", "stylesheet");
 
 
@@ -1356,7 +1380,7 @@ http://opensource.org/licenses/MIT
               break;
             case dependency:
               delayInit = sourceList[index]["dependsOn"];
-              dep = new Dependency(sourceList[index]["src"], getUsingType(sourceList[index]), sourceList[index]["noExtension"], sourceList[index]["backup"], sourceList[index]["name"]);
+              dep = new Dependency(sourceList[index]["src"], getUsingType(sourceList[index]), sourceList[index]["noExtension"], sourceList[index]["backup"], sourceList[index]["name"], sourceList[index]["minified"]);
               break;
           }
           dependencyMap.addDependency(dep);
@@ -1395,7 +1419,7 @@ http://opensource.org/licenses/MIT
         if (name) executingDependency.name = name;
       } else {
         //we don't currently know what the base file is, so create a fake one and have it get resolved later
-        usingDep = new Dependency(usingContext + usingIndex++, usingContext, src["noExtension"], src["backup"], name);
+        usingDep = new Dependency(usingContext + usingIndex++, usingContext, src["noExtension"], src["backup"], name, src["minified"]);
         dependencyMap.addDependency(usingDep);
 
         for (index = dependencies.length - 1; index >= 0; index--) {
