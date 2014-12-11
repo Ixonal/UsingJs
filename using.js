@@ -154,8 +154,15 @@ http://opensource.org/licenses/MIT
           @const */
       error = 9,
 
+      terminalStatuses = {},
+
       /** @type {string} */
       interactive = "interactive";
+
+    terminalStatuses[complete] = true;
+    terminalStatuses[withdrawn] = true;
+    terminalStatuses[destroyed] = true;
+    terminalStatuses[error] = true;
 
     //general form of dependency: 
     //{
@@ -178,9 +185,9 @@ http://opensource.org/licenses/MIT
 
       var extendee = arguments[0],
           extender,
-          index1, index2;
+          index1, index2, length;
 
-      for (index1 = 1; index1 < arguments.length; index1++) {
+      for (index1 = 1, length = arguments.length; index1 < length; index1++) {
         extender = arguments[index1];
         if (extender) {
           for (index2 in extender) {
@@ -197,17 +204,16 @@ http://opensource.org/licenses/MIT
     function merge(args) {
       var mergee = arguments[0],
           merger,
-          index1, index2;
+          index1, index2,
+          length1, length2;
 
       if (!mergee || mergee.constructor !== Array) throw new Error("The mergee must be an array.");
 
-      for (index1 = 1; index1 < arguments.length; index1++) {
+      for (index1 = 1, length1 = arguments.length; index1 < length1; index1++) {
         merger = arguments[index1];
         if (!merger || merger.constructor !== Array) throw new Error("The merger must be an array.");
-        if (merger) {
-          for (index2 = 0; index2 < merger.length; index2++) {
-            mergee.push(merger[index2]);
-          }
+        for (index2 = 0, length2 = merger.length; index2 < length2; index2++) {
+          mergee.push(merger[index2]);
         }
       }
 
@@ -223,7 +229,7 @@ http://opensource.org/licenses/MIT
     function indexOf(arr, obj) {
       if (Array.prototype.indexOf) return Array.prototype.indexOf.apply(arr, obj);
 
-      for (var index = 0; index < arr.length; index++) {
+      for (var index = 0, length = arr.length; index < length; index++) {
         if (arr[index] === obj) return index;
       }
 
@@ -236,7 +242,7 @@ http://opensource.org/licenses/MIT
       @param {Dependency} dep
     */
     function indexOfDependency(arr, dep) {
-      for (var index = 0; index < arr.length; index++) {
+      for (var index = 0, length = arr.length; index < length; index++) {
         if (arr[index].matches(dep)) return index;
       }
 
@@ -251,7 +257,8 @@ http://opensource.org/licenses/MIT
       if (obj === undefined) return "undefined";
       if (typeof (obj) === object) {
         //lots of things count as objects, so let's get a lil more specific
-        if (obj.constructor === global["Array"]) {
+        //if (obj.constructor === global["Array"]) {
+        if (Object.prototype.toString.call(obj) === "[object Array]") {
           if (excludeArrayType) return array;
           //an array where the inner type can be determined
           if (obj.length > 0) return array + "<" + getType(obj[0]) + ">";
@@ -378,15 +385,15 @@ http://opensource.org/licenses/MIT
 
     //finds the script tag that's referencing "using.js"
     function locateUsingScriptTag() {
-      var index, index2,
+      var index, index2, length, length2,
           allScriptTags = document.getElementsByTagName("script"),
           currentSrc,
           usingJs = ["using.js", "using.min.js", configuration["srcName"]], 
           currentSrc2;
 
-      for (index = 0; index < allScriptTags.length; index++) {
+      for (index = 0, length = allScriptTags.length; index < length; index++) {
         currentSrc = allScriptTags[index].src;
-        for (index2 = 0; index2 < usingJs.length; index2++) {
+        for (index2 = 0, length2 = usingJs.length; index2 < length2; index2++) {
           currentSrc2 = usingJs[index2];
           if (currentSrc2 && currentSrc.substr(currentSrc.length - currentSrc2.length, currentSrc2.length) === currentSrc2) return allScriptTags[index];
         }
@@ -518,7 +525,8 @@ http://opensource.org/licenses/MIT
           break;
 
         case array:
-          for (index = src.length - 1; index >= 0; index--) {
+          index = src.length;
+          while(index--) {
             src[index] = fixSourceForCss(src[index]);
           }
           break;
@@ -539,8 +547,7 @@ http://opensource.org/licenses/MIT
       if (Object.keys) return Object.keys(obj).length === 0;
 
       for (var prop in obj) {
-        if (obj.hasOwnProperty(prop))
-          return false;
+        if (obj.hasOwnProperty(prop)) return false;
       }
 
       return true;
@@ -555,9 +562,9 @@ http://opensource.org/licenses/MIT
       @param {Object} content
     */
     function drillPathAndInsert(root, path, content) {
-      var pathParts = path.split(/[\.\/\\]+/), context = root, index;
+      var pathParts = path.split(/[\.\/\\]+/), context = root, index, length;
 
-      for (index = 0; index < pathParts.length - 1; index++) {
+      for (index = 0, length = pathParts.length - 1; index < length; index++) {
         context = (context[pathParts[index]] = context[pathParts[index]] || {});
       }
 
@@ -594,7 +601,8 @@ http://opensource.org/licenses/MIT
 
         //note, this is O(N * M), but the sets should be fairly small, so it shouldn't cause an issue
         for (index in this.map) {
-          for (index2 = this.map[index].length - 1; index2 >= 0; index2--) {
+          index2 = this.map[index].length;
+          while(index2--) {
             switch (depType) {
               case string:
                 switch (getType(this.map[index][index2], true)) {
@@ -652,7 +660,8 @@ http://opensource.org/licenses/MIT
         switch (srcType) {
           case array:
             tmp = [];
-            for (index = src.length - 1; index >= 0; index--) {
+            index = src.length;
+            while(index--) {
               merge(tmp, this.resolveAlias(src[index]));
             }
             break;
@@ -661,6 +670,9 @@ http://opensource.org/licenses/MIT
           case dependency:
             tmp = this.resolveAlias(src);
             break;
+
+          default:
+            throw Error("Unknown dependency type found");
         }
 
         this.map[alias] = tmp;
@@ -671,19 +683,20 @@ http://opensource.org/licenses/MIT
       //get all sources associated with a given alias
       /** @protected */
       resolveAlias: function (alias) {
-        var sources = [], index, innerSources;
+        var sources = [], index, length, innerSources;
 
         switch (getType(alias, true)) {
           case string:
             //resolving a single string
             if (this.map[alias]) {
-              for (index = 0; index < this.map[alias].length; index++) {
+              for (index = 0, length = this.map[alias].length; index < length; index++) {
                 merge(sources, this.resolveAlias(this.map[alias][index]));
               }
             } else {
               return [alias];
             }
             break;
+
           case dependency:
             //resolving a single "dependency"
             if (alias["conditionally"] === undefined || alias["conditionally"] === true) {
@@ -691,10 +704,11 @@ http://opensource.org/licenses/MIT
               if (innerSources.length > 0 && !(innerSources.length === 1 && innerSources[0] === alias.src)) return innerSources;
               else return [alias];
             } else return sources;
-            break;
+
           case array:
             if (alias.length === 0) return sources;
-            for (index = alias.length - 1; index >= 0; index--) {
+            index = alias.length;
+            while(index--) {
               merge(sources, this.resolveAlias(alias[index]));
             }
             if (sources.length === 0) merge(sources, alias);
@@ -766,13 +780,15 @@ http://opensource.org/licenses/MIT
 
         var index;
 
-        for (index = this.dependencyFor.length - 1; index >= 0; index--) {
+        index = this.dependencyFor.length;
+        while(index--) {
           if (this.dependencyFor[index].matches(this)) {
             this.dependencyFor.splice(index, 1);
           }
         }
 
-        for (index = this.dependentOn.length - 1; index >= 0; index--) {
+        index = this.dependentOn.length;
+        while(index--) {
           if (this.dependentOn[index].matches(this)) {
             this.dependentOn.splice(index, 1);
           }
@@ -801,14 +817,16 @@ http://opensource.org/licenses/MIT
         _this.status = finalizing;
 
         //notify anything this depends on
-        for (index = 0; index < _this.dependentOn.length; index++) {
+        index = _this.dependentOn.length;
+        while(index--) {
           if (_this.dependentOn[index].status !== complete) {
             _this.dependentOn[index].notify();
           }
         }
 
         //run any resolution callbacks
-        for (index = 0; index < _this.resolutionCallbacks.length; index++) {
+        index = _this.resolutionCallbacks.length;
+        while(index--) {
           exports = _this.resolutionCallbacks[index](_this.getDependencyExports(), _this.exports);
           switch (getType(exports, true)) {
             case object:
@@ -825,7 +843,8 @@ http://opensource.org/licenses/MIT
         this.status = complete;
 
         //notify anything dependent on this
-        for (index = 0; index < _this.dependencyFor.length; index++) {
+        index = _this.dependencyFor.length;
+        while(index--) {
           if (_this.dependencyFor[index].status != complete) {
             _this.dependencyFor[index].notify();
           }
@@ -844,7 +863,8 @@ http://opensource.org/licenses/MIT
             dep, 
             exports = {};
 
-        for (index = _this.dependentOn.length - 1; index >= 0; index--) {
+        index = _this.dependentOn.length;
+        while(index--) {
           dep = _this.dependentOn[index];
           if (!isEmptyObject(dep.exports)) {
             drillPathAndInsert(exports, dep.name || dep.src, dep.exports);
@@ -956,6 +976,8 @@ http://opensource.org/licenses/MIT
         } else if (depType === dependency) {
           return this.src === dep.src && this.type == dep.type;
         }
+
+        return false;
       },
 
       /** 
@@ -997,7 +1019,8 @@ http://opensource.org/licenses/MIT
           if (dep.noExtension) _this.noExtension = dep.noExtension;
           if (dep.minified !== undefined) _this.minified = dep.minified;
 
-          for (index = dep.dependentOn.length - 1; index >= 0; index--) {
+          index = dep.dependentOn.length;
+          while(index--) {
             //move any observed dependencies over that aren't already included
             dependentOn = dep.dependentOn[index];
             _this.dependOn(dependentOn);
@@ -1007,7 +1030,8 @@ http://opensource.org/licenses/MIT
           }
 
           //move all associated callbacks to this dependency
-          for (index = dep.resolutionCallbacks.length - 1; index >= 0; index--) {
+          index = dep.resolutionCallbacks.length;
+          while(index--) {
             _this.addResolutionCallback(dep.resolutionCallbacks[index]);
           }
 
@@ -1040,9 +1064,11 @@ http://opensource.org/licenses/MIT
         }
         emitError(message);
 
-        for (index = _this.dependencyFor.length - 1; index >= 0; index--) {
+        index = _this.dependencyFor.length;
+        while(index--) {
           dep = _this.dependencyFor[index];
-          if (dep.status !== error && dep.status !== withdrawn && dep.status !== complete) {
+          //if (dep.status !== error && dep.status !== withdrawn && dep.status !== complete) {
+          if(!(dep.status in terminalStatuses)) {
             dep.error(_this);
           }
         }
@@ -1054,10 +1080,11 @@ http://opensource.org/licenses/MIT
       load: function () {
         var _this = this, index, dep, onError;
 
-        if (this.status !== initiated) return;
+        if (_this.status !== initiated) return;
 
         //first, check to make sure that all of the files this file is dependent on are loaded
-        for (index = _this.dependentOn.length - 1; index >= 0; index--) {
+        index = _this.dependentOn.length;
+        while(index--) {
           dep = _this.dependentOn[index];
           //since we can't control when this will execute, if there's a dependency that isn't done yet, we're not ready to load yet.
           if (dep.status === loading || dep.status === initiated) return;
@@ -1071,68 +1098,70 @@ http://opensource.org/licenses/MIT
         _this.status = loading;
 
         //todo: add support for node and webworkers
-        if (_this.type === js) {
-          //using a script element for Javascript
-          _this.requestObj = document.createElement("script");
-          _this.requestObj.setAttribute("src", resolveSourceLocation(_this.useBackup ? _this.backup : _this.src, _this.type, _this.noExtension, this.minified));
-          _this.requestObj.setAttribute("type", "text/javascript");
-          _this.requestObj.setAttribute("defer", "false");
-          _this.requestObj.setAttribute("async", "true");
+        if(configuration.environment == webbrowser) {
+          if(_this.type === js) {
+            //using a script element for Javascript
+            _this.requestObj = document.createElement("script");
+            _this.requestObj.setAttribute("src", resolveSourceLocation(_this.useBackup ? _this.backup : _this.src, _this.type, _this.noExtension, _this.minified));
+            _this.requestObj.setAttribute("type", "text/javascript");
+            _this.requestObj.setAttribute("defer", "false");
+            _this.requestObj.setAttribute("async", "true");
 
-        } else if (_this.type === css) {
-          //using a link element for CSS
-          _this.requestObj = document.createElement("link");
-          _this.requestObj.setAttribute("type", "text/css");
-          _this.requestObj.setAttribute("href", resolveSourceLocation(_this.useBackup ? _this.backup : _this.src, _this.type, _this.noExtension, this.minified));
-          _this.requestObj.setAttribute("rel", "stylesheet");
+          } else if(_this.type === css) {
+            //using a link element for CSS
+            _this.requestObj = document.createElement("link");
+            _this.requestObj.setAttribute("type", "text/css");
+            _this.requestObj.setAttribute("href", resolveSourceLocation(_this.useBackup ? _this.backup : _this.src, _this.type, _this.noExtension, _this.minified));
+            _this.requestObj.setAttribute("rel", "stylesheet");
 
-
-
-        } else {
-          throw new Error("Attempting to load an unsupported file type: " + _this.type);
-        }
-
-        //general error handler
-        onError = function () {
-          if (_this.backup && !_this.useBackup) {
-            emitWarning("Error occurred while loading " + _this.src + ", attempting to load " + _this.backup);
-            _this.useBackup = true;
-            _this.status = initiated;
-            _this.load();
           } else {
-            _this.error();
+            throw new Error("Attempting to load an unsupported file type: " + _this.type);
           }
-        }
 
-
-        if (_this.requestObj.addEventListener) {
-          //can use addEventListener
-          _this.requestObj.addEventListener("load", function () {
-            _this.status = loaded;
-            _this.resolve();
-          }, true);
-
-          _this.requestObj.addEventListener("error", onError, true);
-        } else if (configuration["browser"]["name"] === ie && configuration["browser"]["version"] < 9) {
-          //have an older version of IE
-          _this.requestObj.onreadystatechange = function () {
-
-            if (_this.requestObj.readyState === "complete" || _this.requestObj.readyState === "loaded") {
-              _this.requestObj.onreadystatechange = null;
-              _this.status = loaded;
-              _this.resolve();
+          //general error handler
+          onError = function() {
+            if(_this.backup && !_this.useBackup) {
+              emitWarning("Error occurred while loading " + _this.src + ", attempting to load " + _this.backup);
+              _this.useBackup = true;
+              _this.status = initiated;
+              _this.load();
+            } else {
+              _this.error();
             }
           }
-          if (_this.requestObj.attachEvent) {
-            _this.requestObj.attachEvent("onerror", onError);
-          }
-        } else {
-          //well hmmm....
-          _this.error("Unable to properly attach events with the current browser configuration.");
-        }
 
-        //just appending whichever element to the head of the page
-        document.getElementsByTagName("head")[0].appendChild(_this.requestObj);
+
+          if(_this.requestObj.addEventListener) {
+            //can use addEventListener
+            _this.requestObj.addEventListener("load", function() {
+              _this.status = loaded;
+              _this.resolve();
+            }, true);
+
+            _this.requestObj.addEventListener("error", onError, true);
+          } else if(configuration["browser"]["name"] === ie && configuration["browser"]["version"] < 9) {
+            //have an older version of IE
+            _this.requestObj.onreadystatechange = function() {
+
+              if(_this.requestObj.readyState === "complete" || _this.requestObj.readyState === "loaded") {
+                _this.requestObj.onreadystatechange = null;
+                _this.status = loaded;
+                _this.resolve();
+              }
+            }
+            if(_this.requestObj.attachEvent) {
+              _this.requestObj.attachEvent("onerror", onError);
+            }
+          } else {
+            //well hmmm....
+            _this.error("Unable to properly attach events with the current browser configuration.");
+          }
+
+          //just appending whichever element to the head of the page
+          document.getElementsByTagName("head")[0].appendChild(_this.requestObj);
+        } else {
+          throw Error("This functionality is not yet implemented");
+        }
       },
 
       /** @protected */
@@ -1248,13 +1277,11 @@ http://opensource.org/licenses/MIT
           case string:
             var iDep = this.locateDependency(dep);
             return this.removeDependency(iDep);
-            break;
 
           case dependency:
             delete this._dependencies[dep["src"]];
             dep.destroy();
             break;
-
         }
 
         this._dependencyCount--;
@@ -1268,9 +1295,10 @@ http://opensource.org/licenses/MIT
         var index, status;
 
         //test to see if all known dependencies are in a terminal state
-        for (index in this._dependencies) {
+        index = this._dependencies.length;
+        while(index--) {
           status = this._dependencies[index].status;
-          if (status !== complete && status !== withdrawn && status !== destroyed && status !== error) {
+          if (status in terminalStatuses) {
             return false;
           }
         }
@@ -1284,7 +1312,8 @@ http://opensource.org/licenses/MIT
     function allReady() {
       if (allReadyFired) return;
       allReadyFired = true;
-      for (var index = 0; index < readyCallbacks.length; index++) {
+      var index = readyCallbacks.length;
+      while(index--) {
         readyCallbacks[index]();
       }
     }
@@ -1320,7 +1349,6 @@ http://opensource.org/licenses/MIT
     function usingMain(src, callback, name, hdnDepRef) {
       var /** @type {Array.<string>} */     sourceList,
           /** @type {number} */             index,
-          /** @type {number} */             index2,
           /** @type {Dependency} */         usingDep,
           /** @type {Array.<Dependency>} */ dependencies,
           /** @type {Dependency} */         dep,
@@ -1369,7 +1397,8 @@ http://opensource.org/licenses/MIT
         executingDependency = dependencyMap.locateCurrentScriptDependency();
       }
 
-      for (index = sourceList.length - 1; index >= 0; index--) {
+      index = sourceList.length;
+      while(index--) {
         dep = dependencyMap.locateDependency(sourceList[index]);
         if (!dep) {
           //no existing entry for this source file, create one
@@ -1407,7 +1436,8 @@ http://opensource.org/licenses/MIT
 
       if (executingDependency) {
         //in this case, we know up front what the base file is, so make it depend on the new dependencies
-        for (index = dependencies.length - 1; index >= 0; index--) {
+        index = dependencies.length;
+        while(index--) {
           executingDependency.dependOn(dependencies[index]);
           if (hdnDepRef) {
             dependencies[index].addResolutionCallback(callback);
@@ -1422,7 +1452,8 @@ http://opensource.org/licenses/MIT
         usingDep = new Dependency(usingContext + usingIndex++, usingContext, src["noExtension"], src["backup"], name, src["minified"]);
         dependencyMap.addDependency(usingDep);
 
-        for (index = dependencies.length - 1; index >= 0; index--) {
+        index = dependencies.length;
+        while(index--) {
           usingDep.dependOn(dependencies[index]);
         }
 
@@ -1550,7 +1581,8 @@ http://opensource.org/licenses/MIT
           return using(fixSourceForCss(src), callback);
 
         case array:
-          for (index = src.length - 1; index >= 0; index--) {
+          index = src.length;
+          while(index--) {
             src[index] = fixSourceForCss(src[index]);
           }
           return using(src, callback);
