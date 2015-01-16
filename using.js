@@ -1,5 +1,6 @@
 /*
 UsingJs script loader and dependency tracker
+https://github.com/Ixonal/UsingJs
 Copyright 2013-2015 Benjamin McGregor (Ixonal)
 Released under the MIT Licence
 http://opensource.org/licenses/MIT
