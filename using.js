@@ -54,12 +54,6 @@ http://opensource.org/licenses/MIT
       array = "array",
       /** @type {string} 
           @const */
-      arrayOfString = "array<string>",
-      /** @type {string} 
-          @const */
-      arrayOfDependency = "array<dependency>",
-      /** @type {string} 
-          @const */
       dependency = "dependency",
       /** @type {string} 
           @const */
@@ -94,7 +88,7 @@ http://opensource.org/licenses/MIT
       node = "nd",
 
       /** @type {RegExp} */
-      ieReg = /(MSIE\s*(\d+))|(rv:(\d+\.?\d*))/i,
+      ieReg = /(MSIE\s*(\d+))|(Trident.*rv:(\d+\.?\d*))/i,
       /** @type {RegExp} */
       chromeReg = /Chrome\/(\d+)/i,
       /** @type {RegExp} */
