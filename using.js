@@ -1,7 +1,6 @@
 /*
 UsingJs script loader and dependency tracker
-https://github.com/Ixonal/UsingJs
-Copyright 2013-2015 Benjamin McGregor (Ixonal)
+Copyright 2013-2014 Benjamin McGregor (Ixonal)
 Released under the MIT Licence
 http://opensource.org/licenses/MIT
 */
@@ -54,6 +53,12 @@ http://opensource.org/licenses/MIT
       array = "array",
       /** @type {string} 
           @const */
+      arrayOfString = "array<string>",
+      /** @type {string} 
+          @const */
+      arrayOfDependency = "array<dependency>",
+      /** @type {string} 
+          @const */
       dependency = "dependency",
       /** @type {string} 
           @const */
@@ -88,7 +93,7 @@ http://opensource.org/licenses/MIT
       node = "nd",
 
       /** @type {RegExp} */
-      ieReg = /(MSIE\s*(\d+))|(Trident.*rv:(\d+\.?\d*))/i,
+      ieReg = /(MSIE\s*(\d+))|(rv:(\d+\.?\d*))/i,
       /** @type {RegExp} */
       chromeReg = /Chrome\/(\d+)/i,
       /** @type {RegExp} */
@@ -485,11 +490,11 @@ http://opensource.org/licenses/MIT
           } else if (cssReg.test(src)) {
             return css;
           } else {
-            return js; //should probably set this as unknown at some point
+            return js; //can't infer what we have, assume it's javascript
           }
         case dependency:
-          if(src.type === page || src.type === usingContext) return null;
-          return src.type || js;
+          if(src.type === page || src.type === usingContext) return js;
+          return src.type || getUsingType(src.src);
       }
     }
 
@@ -730,7 +735,7 @@ http://opensource.org/licenses/MIT
         @param {?string=} name */
     function Dependency(src, type, noExtension, backup, name, minified) {
       this.src = src;
-      this.type = type || js;
+      this.type = type || getUsingType(src);
       this.backup = backup;
       this.noExtension = noExtension;
       this.resolutionCallbacks = [];
