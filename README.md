@@ -127,6 +127,38 @@ For example, assume there are three files, A.js, B.js, and C.js
 
 As you see, file dependencies will resolve themselves without the need to pre-register anything.
 
+### AMD-Like ###
+This library doesn't adhere strictly to the AMD spec, but it does accomplish the same task. Modules 
+can be created and referenced completely out of the global scope. This is handled through the imports 
+and exports arguments.
+
+    using("some/dependency", function(imports, exports) {
+      var something = imports.some.dependency;
+      
+      exports.doSomething = function() {
+        something.do();
+      }
+    });
+    
+If anything is defined in the return value instead of exports, it will be used in place of the exports. 
+This is convenient for defining and exposing types.
+
+    using([], function() {
+      function SomeType() {
+        this.someAction = function() {
+          console.log("blah");
+        }
+      }
+      
+      return SomeType;
+    });
+    
+    //then in another module....
+    
+    using("SomeType", function(imports) {
+      var something = new imports.SomeType();
+    });
+
 *Anything else I should know?*
 
 ### Advanced Dependencies ###
