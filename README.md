@@ -2,8 +2,10 @@ UsingJs
 =======
 
 Javascript async script loader and dependency tracker. I know that many others exist, 
-however nothing did quite what I wanted it to do, so I created this. I also tried to 
-consolidate all the various features that I liked from other script loaders into one. 
+however nothing did quite what I wanted it to do (except possibly for require.js, but
+it decided not to cooperate and I don't like that it takes two global variables), so 
+I created this. I also tried to consolidate all the various features that I liked from 
+other script loaders into one. 
 Please make sure to download from a release tag, rather than the master copy.
   
   
@@ -14,8 +16,11 @@ Please make sure to download from a release tag, rather than the master copy.
   
 ### Available attributes: ###
 
+These attributes can be applied to the script tag:
+
 **data-script-root:** will specify where the root of the script directory is. The default is the server root ("/").  
-**data-using:** will run a using call on whatever is specified in it. This is the preferred entry point.  
+**data-using:** will run a using call on whatever is specified in it. This may be any kind of dependency, though it
+will typically be a call to a single main module.  
 **data-style-root:** will specify where the root of the style (css) directory is. The default is the server root ("/").  
 **data-using-css:** will run a css using call on whatever is specified in it.  
   
