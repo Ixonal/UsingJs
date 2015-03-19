@@ -1,7 +1,6 @@
 /*
 UsingJs script loader and dependency tracker
-https://github.com/Ixonal/UsingJs
-Copyright 2013-2015 Benjamin McGregor (Ixonal)
+Copyright 2013-2014 Benjamin McGregor (Ixonal)
 Released under the MIT Licence
 http://opensource.org/licenses/MIT
 */
@@ -734,7 +733,7 @@ http://opensource.org/licenses/MIT
         @param {?boolean=} noExtension 
         @param {?string=} backup 
         @param {?string=} name */
-    function Dependency(src, type, noExtension, backup, name, minified) {
+    function Dependency(src, type, noExtension, backup, name, minified, exportProp) {
       this.src = src;
       this.type = type || getUsingType(src);
       this.backup = backup;
@@ -743,6 +742,7 @@ http://opensource.org/licenses/MIT
       this.dependencyFor = [];
       this.dependentOn = [];
       this.exports = {};
+      this.exportProp = exportProp;
       if (name) this.name = name;
       this.minified = minified !== undefined ? minified : configuration["minified"];
     }
@@ -774,6 +774,8 @@ http://opensource.org/licenses/MIT
       name: null,                 //name of this dependency's export
       /** @protected */
       minified: false,            //whether or not to try to load a minified version of the source (appends .min to the src)
+      /** @protected */
+      exportProp: null,           //name of a global property which counts as the exports for this dependency (if exports doesn't contain it)
 
       /** @protected */
       destroy: function () {
@@ -869,6 +871,8 @@ http://opensource.org/licenses/MIT
           dep = _this.dependentOn[index];
           if (!isEmptyObject(dep.exports)) {
             drillPathAndInsert(exports, dep.name || dep.src, dep.exports);
+          } else if(dep.exportProp) {
+            drillPathAndInsert(exports, dep.name || dep.src, global[dep.exportProp]);
           }
         }
 
@@ -1410,7 +1414,13 @@ http://opensource.org/licenses/MIT
               break;
             case dependency:
               delayInit = sourceList[index]["dependsOn"];
-              dep = new Dependency(sourceList[index]["src"], getUsingType(sourceList[index]), sourceList[index]["noExtension"], sourceList[index]["backup"], sourceList[index]["name"], sourceList[index]["minified"]);
+              dep = new Dependency(sourceList[index]["src"],
+                                   getUsingType(sourceList[index]),
+                                   sourceList[index]["noExtension"],
+                                   sourceList[index]["backup"],
+                                   sourceList[index]["name"],
+                                   sourceList[index]["minified"],
+                                   sourceList[index]["exports"]);
               break;
           }
           dependencyMap.addDependency(dep);
@@ -1493,7 +1503,7 @@ http://opensource.org/licenses/MIT
       }
 
       //going to implicitly alias the dependency, so that calls to that module will reference the correct dependency
-      if (getType(name, true) === string && name !== src) using.alias(name, src);
+      //if (getType(name, true) === string && name !== src) using.alias(name, src);
 
       usingMain(src, callback, name);
       return using;
