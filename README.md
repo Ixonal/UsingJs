@@ -166,7 +166,7 @@ This is convenient for defining and exposing types.
 Dependencies may be described using either a string (as above) or an object of the following form:
 
     {
-      src: "Test",                //source string as above                        (string, required)
+      src: "Test",                 //source string as above                        (string, required)
       type: "js or css",           //the type of file ("js" by default)           (string, optional)
       noExtension: true || false,  //whether or not to add an extension           (boolean, optional)
       conditionally: condition,    //whether or not to register this dependency   (boolean, optional)
