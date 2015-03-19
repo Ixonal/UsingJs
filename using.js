@@ -573,6 +573,17 @@ http://opensource.org/licenses/MIT
       return context;
     }
 
+    function followPathToEnd(root, path) {
+      var pathParts = path.split(/[\.\/\\]+/), context = root, index, length;
+
+      for (index = 0, length = pathParts.length; index < length; index++) {
+        context = context[pathParts[index]];
+        if(context === undefined) return null;
+      }
+
+      return context;
+    }
+
     //--------------------------------------------------------//
 
 
@@ -872,7 +883,7 @@ http://opensource.org/licenses/MIT
           if (!isEmptyObject(dep.exports)) {
             drillPathAndInsert(exports, dep.name || dep.src, dep.exports);
           } else if(dep.exportProp) {
-            drillPathAndInsert(exports, dep.name || dep.src, global[dep.exportProp]);
+            drillPathAndInsert(exports, dep.name || dep.src, followPathToEnd(global, dep.exportProp));
           }
         }
 
