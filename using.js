@@ -1,6 +1,6 @@
-/*
+/** @preserve
 UsingJs script loader and dependency tracker
-Copyright 2013-2014 Benjamin McGregor (Ixonal)
+Copyright 2013-2015 Benjamin McGregor (Ixonal)
 Released under the MIT Licence
 http://opensource.org/licenses/MIT
 */
@@ -51,6 +51,9 @@ http://opensource.org/licenses/MIT
       /** @type {string} 
           @const */
       array = "array",
+      /** @type {string} 
+          @const */
+      func = "function",
       /** @type {string} 
           @const */
       arrayOfString = "array<string>",
@@ -430,6 +433,7 @@ http://opensource.org/licenses/MIT
       @param {string} src
       @param {string} type
       @param {boolean=} noExtension
+      @param {boolean=} minified
     */
     function resolveSourceLocation(src, type, noExtension, minified) {
       //for simplicity's sake, I'm assuming src is just a single string
@@ -743,7 +747,9 @@ http://opensource.org/licenses/MIT
         @param {?string=} type 
         @param {?boolean=} noExtension 
         @param {?string=} backup 
-        @param {?string=} name */
+        @param {?string=} name 
+        @param {?boolean=} minified
+        @param {?string=} exportProp */
     function Dependency(src, type, noExtension, backup, name, minified, exportProp) {
       this.src = src;
       this.type = type || getUsingType(src);
@@ -973,7 +979,7 @@ http://opensource.org/licenses/MIT
       /** @protected */
       /** @param {function()} callback */
       addResolutionCallback: function (callback) {
-        if (getType(callback) !== "function") throw new Error("dependency resolution callback function must be a function.");
+        if (getType(callback) !== func) throw new Error("dependency resolution callback function must be a function.");
         if (this.status === finalizing || this.status === complete) {
           callback();
         } else {
@@ -1114,7 +1120,7 @@ http://opensource.org/licenses/MIT
         _this.status = loading;
 
         //todo: add support for node and webworkers
-        if(configuration.environment == webbrowser) {
+        if(configuration["environment"] == webbrowser) {
           if(_this.type === js) {
             //using a script element for Javascript
             _this.requestObj = document.createElement("script");
@@ -1357,7 +1363,7 @@ http://opensource.org/licenses/MIT
     //--------------------------------------------------------//
 
     /**
-      @param {string|Object|Dependency|function()} src 
+      @param {string|Object|function()|Dependency} src 
       @param {?function()=} callback 
       @param {?string=} name 
       @param {?Dependency=} hdnDepRef 
@@ -1374,7 +1380,7 @@ http://opensource.org/licenses/MIT
 
 
       switch (getType(src, true)) {
-        case "function":
+        case func:
           //if src is a function, then this is an "all ready" shortcut
           return using.ready(src);
 
@@ -1496,7 +1502,7 @@ http://opensource.org/licenses/MIT
     //public interface
     //--------------------------------------------------------//
     /** 
-      @param {string|Object} src
+      @param {string|Object|function()} src
       @param {function()=} callback
     */
     function using(src, callback) {
@@ -1528,8 +1534,8 @@ http://opensource.org/licenses/MIT
     using.page = function (opt1, opt2) {
       inPageBlock = true;
       switch (getType(opt1, true)) {
-        case "function":
-          opt1();
+        case func:
+          opt1.call(global);
           break;
         default:
           using(opt1, opt2);
@@ -1545,8 +1551,8 @@ http://opensource.org/licenses/MIT
     using.page.css = function (opt1, opt2) {
       inPageBlock = true;
       switch (getType(opt1, true)) {
-        case "function":
-          opt1();
+        case func:
+          opt1.call(global);
           break;
         default:
           using.css(opt1, opt2);
