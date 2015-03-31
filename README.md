@@ -166,12 +166,15 @@ This is convenient for defining and exposing types.
 Dependencies may be described using either a string (as above) or an object of the following form:
 
     {
-      src: "Test",                 //source string as above                        (string, required)
-      type: "js or css",           //the type of file ("js" by default)           (string, optional)
-      noExtension: true || false,  //whether or not to add an extension           (boolean, optional)
-      conditionally: condition,    //whether or not to register this dependency   (boolean, optional)
-      dependsOn: "Something"       //A file on which this dependency is dependent (string, dependency, or array of either, optional)
-      backup: "alternate/location" //backup source location                       (string, optional)
+      src: "Test",                  //source string as above                        (string, required)
+      type: "js or css",            //the type of file ("js" by default)           (string, optional)
+      noExtension: true || false,   //whether or not to add an extension           (boolean, optional)
+      conditionally: condition,     //whether or not to register this dependency   (boolean, optional)
+      dependsOn: "Something"        //A file on which this dependency is dependent (string, dependency, or array of either, optional)
+      backup: "alternate/location", //backup source location                       (string, optional)
+      name: "importName",           //name of the import                           (string, optional)
+      exports: "someObj",           //name of the global property considered to be (string, optional)
+                                    //exported from the referenced module
     }
 
 **Of Note:**
@@ -186,6 +189,12 @@ The "backup" property defines a source location to attempt to load from if the l
 
     using.alias("jQuery", { src: "//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js", backup: "Lib/jquery-1.11.0.min" });
 
+**Finally:**
+The "name" and "exports" properties can be used to import libraries that place things into the global scope into modules. This can be helpful with libraries such as jQuery. For example:
+
+    using([{ src: "Lib/jquery.min", exports: "jQuery", name: "$" }, function(imports) {
+      var $ = imports.$;
+    });
   
 ### Configurations: ###
 There are certain global options that can be configured:
