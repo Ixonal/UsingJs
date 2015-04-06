@@ -354,8 +354,8 @@ http://opensource.org/licenses/MIT
 
       if (!scriptTag) throw new Error("Could not locate the using.js script include. \nPlease specify the name of the source file in the configuration.");
 
-      var scriptRoot = scriptTag.getAttribute("data-script-root"),
-          styleRoot = scriptTag.getAttribute("data-style-root"),
+      var scriptRoot = scriptTag.getAttribute("data-script-root") || (options && options["scriptRoot"]) || configuration["scriptRoot"],
+          styleRoot = scriptTag.getAttribute("data-style-root") || (options && options["styleRoot"]) || configuration["styleRoot"],
           initialUsing = scriptTag.getAttribute("data-using"),
           initialStyleUsing = scriptTag.getAttribute("data-using-css");
 
