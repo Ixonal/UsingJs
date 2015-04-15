@@ -428,60 +428,6 @@ http://opensource.org/licenses/MIT
       }
     }
 
-    //todo: move this functionality into the dependency prototype
-    /**
-      @param {string} src
-      @param {string} type
-      @param {boolean=} noExtension
-      @param {boolean=} minified
-    */
-    function resolveSourceLocation(src, type, noExtension, minified) {
-      //for simplicity's sake, I'm assuming src is just a single string
-      var retVal = "" + src,
-          timestamp = new Date().getTime();
-      if (isCrossServerLocation(retVal)) {
-        //the request is for another domain probly a CDN (type, noExtension, and minified are ignored)
-        return retVal + (!configuration["cached"] ? (retVal.indexOf("?") === -1 ? "?_t=" : "&_t=") + timestamp : "");
-      } else {
-        //looks like a relative path. Make sure the script root and type are included.
-
-        //ensure we're looking at the minified version, if needed
-        if (!noExtension && minified && retVal.indexOf("min") === -1) {
-          retVal += ".min";
-        }
-
-        if (!noExtension && type !== usingContext && type !== page && retVal.substr(retVal.length - type.length) !== type) {
-          //type is not already included, add it
-          retVal += "." + type;
-        }
-        if (retVal.substr(0, 1) === "/") {
-          //make sure we don't print out "//" in the source...
-          retVal = retVal.substr(1);
-        }
-
-        //can trick browsers into getting an uncached copy of a script by adding the current timestamp as a query string parameter
-        if (!configuration["cached"]) {
-          if (retVal.indexOf("?") === -1) {
-            retVal += "?_t=" + timestamp;
-          } else {
-            retVal += "&_t=" + timestamp;
-          }
-        }
-
-        //use the correct root directory
-        switch (type) {
-          case js:
-            return configuration["scriptRoot"] + retVal;
-
-          case css:
-            return configuration["styleRoot"] + retVal;
-
-          default:
-            return "/" + retVal;
-        }
-
-      }
-    }
 
     //see if we're working with a javascript or css include
     /** @protected 
@@ -1099,6 +1045,57 @@ http://opensource.org/licenses/MIT
       },
 
       /** @protected */
+      resolveSourceLocation: function () {
+        var _this = this,
+            src = _this.useBackup ? _this.backup : _this.src,
+            retVal = "" + src,
+            timestamp = new Date().getTime();
+
+        if (isCrossServerLocation(retVal)) {
+          //the request is for another domain probly a CDN (type, noExtension, and minified are ignored)
+          return retVal + (!configuration["cached"] ? (retVal.indexOf("?") === -1 ? "?_t=" : "&_t=") + timestamp : "");
+        } else {
+          //looks like a relative path. Make sure the script root and type are included.
+
+          //ensure we're looking at the minified version, if needed
+          if (!_this.noExtension && _this.minified && retVal.indexOf("min") === -1) {
+            retVal += ".min";
+          }
+
+          if (!_this.noExtension && _this.type !== usingContext && _this.type !== page && retVal.substr(retVal.length - _this.type.length) !== _this.type) {
+            //type is not already included, add it
+            retVal += "." + _this.type;
+          }
+          if (retVal.substr(0, 1) === "/") {
+            //make sure we don't print out "//" in the source...
+            retVal = retVal.substr(1);
+          }
+
+          //can trick browsers into getting an uncached copy of a script by adding the current timestamp as a query string parameter
+          if (!configuration["cached"]) {
+            if (retVal.indexOf("?") === -1) {
+              retVal += "?_t=" + timestamp;
+            } else {
+              retVal += "&_t=" + timestamp;
+            }
+          }
+
+          //use the correct root directory
+          switch (_this.type) {
+            case js:
+              return configuration["scriptRoot"] + retVal;
+
+            case css:
+              return configuration["styleRoot"] + retVal;
+
+            default:
+              return "/" + retVal;
+          }
+
+        }
+      },
+
+      /** @protected */
       load: function () {
         var _this = this, index, dep, onError;
 
@@ -1124,7 +1121,7 @@ http://opensource.org/licenses/MIT
           if(_this.type === js) {
             //using a script element for Javascript
             _this.requestObj = document.createElement("script");
-            _this.requestObj.setAttribute("src", resolveSourceLocation(_this.useBackup ? _this.backup : _this.src, _this.type, _this.noExtension, _this.minified));
+            _this.requestObj.setAttribute("src", _this.resolveSourceLocation());
             _this.requestObj.setAttribute("type", "text/javascript");
             _this.requestObj.setAttribute("defer", "false");
             _this.requestObj.setAttribute("async", "true");
@@ -1133,7 +1130,7 @@ http://opensource.org/licenses/MIT
             //using a link element for CSS
             _this.requestObj = document.createElement("link");
             _this.requestObj.setAttribute("type", "text/css");
-            _this.requestObj.setAttribute("href", resolveSourceLocation(_this.useBackup ? _this.backup : _this.src, _this.type, _this.noExtension, _this.minified));
+            _this.requestObj.setAttribute("href", _this.resolveSourceLocation());
             _this.requestObj.setAttribute("rel", "stylesheet");
 
           } else {
