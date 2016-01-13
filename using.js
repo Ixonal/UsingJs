@@ -1071,14 +1071,16 @@ http://opensource.org/licenses/MIT
             retVal = retVal.substr(1);
           }
 
+          //adding the "version" to the path, so that when the version changes, the new scripts will be loaded
+          if (configuration["cached"] && configuration["version"]) {
+            retVal += (retVal.indexOf("?") >= 0 ? "&" : "?") + "_v=" + encodeURIComponent(configuration["version"]);
+          }
+
           //can trick browsers into getting an uncached copy of a script by adding the current timestamp as a query string parameter
           if (!configuration["cached"]) {
-            if (retVal.indexOf("?") === -1) {
-              retVal += "?_t=" + timestamp;
-            } else {
-              retVal += "&_t=" + timestamp;
-            }
+            retVal += (retVal.indexOf("?") >= 0 ? "&" : "?") + "_t=" + timestamp;
           }
+
 
           //use the correct root directory
           switch (_this.type) {
