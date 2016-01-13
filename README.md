@@ -1,7 +1,7 @@
 UsingJs
 =======
 
-Javascript async script loader and dependency tracker. I know that many others exist, 
+Javascript async module loader. I know that many others exist, 
 however nothing did quite what I wanted it to do (except possibly for require.js, but
 it decided not to cooperate and I don't like that it takes two global variables), so 
 I created this. I also tried to consolidate all the various features that I liked from 
