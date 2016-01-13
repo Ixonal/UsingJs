@@ -205,6 +205,10 @@ There are certain global options that can be configured:
       scriptRoot: "/",         //string, default script root
       styleRoot: "/",          //string, default style root
       cached: true,            //boolean, whether or not to cache the source files
+      version: "1.0.0"         //string or number, a string to denote the current version of the app 
+                               //                  using this library. When the version increases, users will 
+                               //                  load the new files, but enjoy cached versions the rest of 
+                               //                  the time.
       debug: false             //boolean, whether or not to show error messages in log
     }
 
@@ -224,5 +228,12 @@ has been included.
     using.config({
       scriptRoot: "/Scripts",
       cached: false
+    });
+    
+    //a typical production configuration may look like this
+    using.config({
+      scriptRoot: "/Scripts",
+      minified: true,
+      version: "@Html.VersionHelper()"
     });
 
