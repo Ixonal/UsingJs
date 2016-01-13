@@ -230,9 +230,9 @@ has been included.
       cached: false
     });
     
-    //a typical production configuration may look like this
+    //a typical production configuration on a mvc (with Razor) server may look like this
     using.config({
-      scriptRoot: "/Scripts",
+      scriptRoot: "@Url.Content("~/Scripts")",
       minified: true,
       version: "@Html.VersionHelper()"
     });
