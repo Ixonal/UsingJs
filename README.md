@@ -233,6 +233,7 @@ has been included.
     //a typical production configuration on a mvc (with Razor) server may look like this
     using.config({
       scriptRoot: "@Url.Content("~/Scripts")",
+      styleRoot: "@Url.Content("~/Content")",
       minified: true,
       version: "@Html.VersionHelper()"
     });
