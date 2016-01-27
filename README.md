@@ -212,7 +212,7 @@ There are certain global options that can be configured:
       debug: false             //boolean, whether or not to show error messages in log
     }
 
-These settings can be set by assigning an object to the global variable using.configuration before 
+These settings can be set by assigning an object to the global variable using.config before 
 the library has been included, or calling the using.config function on an object after the library 
 has been included.
 
