@@ -12,7 +12,7 @@ http://opensource.org/licenses/MIT
     //global variable should be the context of "this" when this closure is run
     var global = this || (0, eval)('this'),
 
-      configuration = global["using"] ? using["configuration"] : null,
+      configuration = global["using"] ? global["using"]["config"] : null,
 
       Array = global["Array"],
 
