@@ -223,15 +223,13 @@ http://opensource.org/licenses/MIT
       return mergee;
     }
 
-    //uses array implementation if it exists, or a shim if it doesn't
-    //didn't want to insert it into the Array prototype, so keeping it in this closure
     /**
-      @param {Array} arr
-      @param {Object} obj
-    */
+     * Native version is slower due to sanity checking. Since I know the data here will be sane, 
+     * there is no need for all that.
+     * @param {Array} arr
+     * @param {Object} obj
+     */
     function indexOf(arr, obj) {
-      if (Array.prototype.indexOf) return Array.prototype.indexOf.apply(arr, obj);
-
       for (var index = 0, length = arr.length; index < length; index++) {
         if (arr[index] === obj) return index;
       }
@@ -241,9 +239,10 @@ http://opensource.org/licenses/MIT
 
     //like above, but uses the dependency's "matches" function for equality
     /**
-      @param {Array} arr
-      @param {Dependency} dep
-    */
+     * like above, but uses the dependency's "matches" function for equality
+     * @param {Array} arr
+     * @param {Dependency} dep
+     */
     function indexOfDependency(arr, dep) {
       for (var index = 0, length = arr.length; index < length; index++) {
         if (arr[index].matches(dep)) return index;
@@ -252,15 +251,16 @@ http://opensource.org/licenses/MIT
       return -1;
     }
 
-    //based off of typeof, but also discriminates between built in types and arrays of types
-    /** @param {Object|string|function()|number} obj 
-        @param {boolean=} excludeArrayType */
+    /** 
+     * based off of typeof, but also discriminates between built in types and arrays of types (if desired)
+     * @param {Object|string|function()|number} obj 
+     * @param {boolean=} excludeArrayType 
+     */
     function getType(obj, excludeArrayType) {
       if (obj === null) return "null";
       if (obj === undefined) return "undefined";
       if (typeof (obj) === object) {
         //lots of things count as objects, so let's get a lil more specific
-        //if (obj.constructor === global["Array"]) {
         if (Object.prototype.toString.call(obj) === "[object Array]") {
           if (excludeArrayType) return array;
           //an array where the inner type can be determined
@@ -934,10 +934,12 @@ http://opensource.org/licenses/MIT
         }
       },
 
-      /** @protected */
-      /** @param {Dependency|Object|string} dep */
+      /** 
+       * does this dependency match (different from equal) another dependency?
+       * @protected 
+       * @param {Dependency|Object|string} dep
+       */
       matches: function (dep) {
-        //does this dependency match (different from equal) another dependency?
         var depType = getType(dep);
 
         if (depType === string) {
@@ -1224,7 +1226,7 @@ http://opensource.org/licenses/MIT
 
           for (c = 0; c < length; c++) {
             nextCtx = ctx.dependentOn[c];
-            if (indexOfDependency(visited, nextCtx) === -1) count += recursiveCounter(nextCtx);
+            if (indexOf(visited, nextCtx) === -1) count += recursiveCounter(nextCtx);
             visited.push(nextCtx);
           }
 
@@ -1249,7 +1251,7 @@ http://opensource.org/licenses/MIT
 
           for (c = 0; c < length; c++) {
             nextCtx = ctx.dependentOn[c];
-            if (indexOfDependency(visited, nextCtx) === -1) count += recursiveCounter(nextCtx);
+            if (indexOf(visited, nextCtx) === -1) count += recursiveCounter(nextCtx);
             visited.push(nextCtx);
           }
 
