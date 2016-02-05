@@ -316,7 +316,7 @@ http://opensource.org/licenses/MIT
         ) { }
 
         browser.name = ie;
-        
+
         if (v > 4) {
           //getting the version from feature detection
           browser.version = v;
@@ -391,7 +391,7 @@ http://opensource.org/licenses/MIT
       var index, index2, length, length2,
           allScriptTags = document.getElementsByTagName("script"),
           currentSrc,
-          usingJs = ["using.js", "using.min.js", configuration["srcName"]], 
+          usingJs = ["using.js", "using.min.js", configuration["srcName"]],
           currentSrc2;
 
       for (index = 0, length = allScriptTags.length; index < length; index++) {
@@ -443,7 +443,7 @@ http://opensource.org/licenses/MIT
             return js; //can't infer what we have, assume it's javascript
           }
         case dependency:
-          if(src.type === page || src.type === usingContext) return js;
+          if (src.type === page || src.type === usingContext) return js;
           return src.type || getUsingType(src.src);
       }
     }
@@ -476,7 +476,7 @@ http://opensource.org/licenses/MIT
 
         case array:
           index = src.length;
-          while(index--) {
+          while (index--) {
             src[index] = fixSourceForCss(src[index]);
           }
           break;
@@ -528,7 +528,7 @@ http://opensource.org/licenses/MIT
 
       for (index = 0, length = pathParts.length; index < length; index++) {
         context = context[pathParts[index]];
-        if(context === undefined) return null;
+        if (context === undefined) return null;
       }
 
       return context;
@@ -563,7 +563,7 @@ http://opensource.org/licenses/MIT
         //note, this is O(N * M), but the sets should be fairly small, so it shouldn't cause an issue
         for (index in this.map) {
           index2 = this.map[index].length;
-          while(index2--) {
+          while (index2--) {
             switch (depType) {
               case string:
                 switch (getType(this.map[index][index2], true)) {
@@ -622,7 +622,7 @@ http://opensource.org/licenses/MIT
           case array:
             tmp = [];
             index = src.length;
-            while(index--) {
+            while (index--) {
               merge(tmp, this.resolveAlias(src[index]));
             }
             break;
@@ -669,7 +669,7 @@ http://opensource.org/licenses/MIT
           case array:
             if (alias.length === 0) return sources;
             index = alias.length;
-            while(index--) {
+            while (index--) {
               merge(sources, this.resolveAlias(alias[index]));
             }
             if (sources.length === 0) merge(sources, alias);
@@ -747,14 +747,14 @@ http://opensource.org/licenses/MIT
         var index;
 
         index = this.dependencyFor.length;
-        while(index--) {
+        while (index--) {
           if (this.dependencyFor[index].matches(this)) {
             this.dependencyFor.splice(index, 1);
           }
         }
 
         index = this.dependentOn.length;
-        while(index--) {
+        while (index--) {
           if (this.dependentOn[index].matches(this)) {
             this.dependentOn.splice(index, 1);
           }
@@ -784,7 +784,7 @@ http://opensource.org/licenses/MIT
 
         //notify anything this depends on
         index = _this.dependentOn.length;
-        while(index--) {
+        while (index--) {
           if (_this.dependentOn[index].status !== complete) {
             _this.dependentOn[index].notify();
           }
@@ -792,13 +792,13 @@ http://opensource.org/licenses/MIT
 
         //run any resolution callbacks
         index = _this.resolutionCallbacks.length;
-        while(index--) {
+        while (index--) {
           exports = _this.resolutionCallbacks[index](_this.getDependencyExports(), _this.exports);
           switch (getType(exports, true)) {
             case object:
               extend(_this.exports, exports);
               break;
-              
+
             default:
               if (exports) _this.exports = exports;
               break;
@@ -807,34 +807,35 @@ http://opensource.org/licenses/MIT
 
         //now we are officially considered complete
         this.status = complete;
+        dependencyInterface.emit("dependency-status-terminal");
 
         //notify anything dependent on this
         index = _this.dependencyFor.length;
-        while(index--) {
+        while (index--) {
           if (_this.dependencyFor[index].status != complete) {
             _this.dependencyFor[index].notify();
           }
         }
 
         //check to see if everything else is ready
-        if (_this.type !== page && dependencyMap.testCompleteness()) {
+        if (_this.type !== page && dependencyInterface.testCompleteness()) {
           allReady();
         }
       },
 
       /** @protected */
-      getDependencyExports: function() {
-        var _this = this, 
-            index, 
-            dep, 
+      getDependencyExports: function () {
+        var _this = this,
+            index,
+            dep,
             exports = {};
 
         index = _this.dependentOn.length;
-        while(index--) {
+        while (index--) {
           dep = _this.dependentOn[index];
           if (!isEmptyObject(dep.exports)) {
             drillPathAndInsert(exports, dep.name || dep.src, dep.exports);
-          } else if(dep.exportProp) {
+          } else if (dep.exportProp) {
             drillPathAndInsert(exports, dep.name || dep.src, followPathToEnd(global, dep.exportProp));
           }
         }
@@ -849,7 +850,7 @@ http://opensource.org/licenses/MIT
         if (_this.status !== resolved && _this.status !== error) return;
 
         if (_this.status === error) {
-          if (dependencyMap.testCompleteness()) {
+          if (dependencyInterface.testCompleteness()) {
             allReady();
           }
         } else if (_this.isReady()) {
@@ -874,10 +875,10 @@ http://opensource.org/licenses/MIT
           currentDep = _this.dependentOn[index];
           if (indexOf(path, currentDep) !== -1) {
             //if the current dependency was found in the path, just notify the user and keep going
-            if(configuration["debug"]) {
+            if (configuration["debug"]) {
               var errorMsg = "Cyclic dependency found (non-terminal): \n", errorIndex;
 
-              for(errorIndex = 0; errorIndex < path.length; errorIndex++) {
+              for (errorIndex = 0; errorIndex < path.length; errorIndex++) {
                 errorMsg += (path[errorIndex] === currentDep) ? "--->" : "    ";
                 errorMsg += (path[errorIndex].name || path[errorIndex].src) + "\n";
               }
@@ -988,7 +989,7 @@ http://opensource.org/licenses/MIT
           if (dep.minified !== undefined) _this.minified = dep.minified;
 
           index = dep.dependentOn.length;
-          while(index--) {
+          while (index--) {
             //move any observed dependencies over that aren't already included
             dependentOn = dep.dependentOn[index];
             _this.dependOn(dependentOn);
@@ -999,12 +1000,12 @@ http://opensource.org/licenses/MIT
 
           //move all associated callbacks to this dependency
           index = dep.resolutionCallbacks.length;
-          while(index--) {
+          while (index--) {
             _this.addResolutionCallback(dep.resolutionCallbacks[index]);
           }
 
           //at this point, remove the outstanding using context
-          dependencyMap.removeDependency(dep);
+          dependencyInterface.removeDependency(dep);
         }
 
         _this.status = resolved;
@@ -1017,10 +1018,11 @@ http://opensource.org/licenses/MIT
         var _this = this, index, dep, target, parent = arguments[0], message;
 
         _this.status = error;
+        dependencyInterface.emit("dependency-status-terminal");
 
         target = _this.useBackup ? _this.backup : _this.src;
         if (target === page) target = "page";
-        if(target === usingContext) target = "using context";
+        if (target === usingContext) target = "using context";
 
         message = "UsingJs: An error has occurred when loading " + target;
 
@@ -1033,10 +1035,10 @@ http://opensource.org/licenses/MIT
         emitError(message);
 
         index = _this.dependencyFor.length;
-        while(index--) {
+        while (index--) {
           dep = _this.dependencyFor[index];
           //if (dep.status !== error && dep.status !== withdrawn && dep.status !== complete) {
-          if(!(dep.status in terminalStatuses)) {
+          if (!(dep.status in terminalStatuses)) {
             dep.error(_this);
           }
         }
@@ -1105,7 +1107,7 @@ http://opensource.org/licenses/MIT
 
         //first, check to make sure that all of the files this file is dependent on are loaded
         index = _this.dependentOn.length;
-        while(index--) {
+        while (index--) {
           dep = _this.dependentOn[index];
           //since we can't control when this will execute, if there's a dependency that isn't done yet, we're not ready to load yet.
           if (dep.status === loading || dep.status === initiated) return;
@@ -1119,8 +1121,8 @@ http://opensource.org/licenses/MIT
         _this.status = loading;
 
         //todo: add support for node and webworkers
-        if(configuration["environment"] == webbrowser) {
-          if(_this.type === js) {
+        if (configuration["environment"] == webbrowser) {
+          if (_this.type === js) {
             //using a script element for Javascript
             _this.requestObj = document.createElement("script");
             _this.requestObj.setAttribute("src", _this.resolveSourceLocation());
@@ -1128,7 +1130,7 @@ http://opensource.org/licenses/MIT
             _this.requestObj.setAttribute("defer", "false");
             _this.requestObj.setAttribute("async", "true");
 
-          } else if(_this.type === css) {
+          } else if (_this.type === css) {
             //using a link element for CSS
             _this.requestObj = document.createElement("link");
             _this.requestObj.setAttribute("type", "text/css");
@@ -1140,8 +1142,8 @@ http://opensource.org/licenses/MIT
           }
 
           //general error handler
-          onError = function() {
-            if(_this.backup && !_this.useBackup) {
+          onError = function () {
+            if (_this.backup && !_this.useBackup) {
               emitWarning("Error occurred while loading " + _this.src + ", attempting to load " + _this.backup);
               _this.useBackup = true;
               _this.status = initiated;
@@ -1152,25 +1154,25 @@ http://opensource.org/licenses/MIT
           }
 
 
-          if(_this.requestObj.addEventListener) {
+          if (_this.requestObj.addEventListener) {
             //can use addEventListener
-            _this.requestObj.addEventListener("load", function() {
+            _this.requestObj.addEventListener("load", function () {
               _this.status = loaded;
               _this.resolve();
             }, true);
 
             _this.requestObj.addEventListener("error", onError, true);
-          } else if(configuration["browser"]["name"] === ie && configuration["browser"]["version"] < 9) {
+          } else if (configuration["browser"]["name"] === ie && configuration["browser"]["version"] < 9) {
             //have an older version of IE
-            _this.requestObj.onreadystatechange = function() {
+            _this.requestObj.onreadystatechange = function () {
 
-              if(_this.requestObj.readyState === "complete" || _this.requestObj.readyState === "loaded") {
+              if (_this.requestObj.readyState === "complete" || _this.requestObj.readyState === "loaded") {
                 _this.requestObj.onreadystatechange = null;
                 _this.status = loaded;
                 _this.resolve();
               }
             }
-            if(_this.requestObj.attachEvent) {
+            if (_this.requestObj.attachEvent) {
               _this.requestObj.attachEvent("onerror", onError);
             }
           } else {
@@ -1201,11 +1203,79 @@ http://opensource.org/licenses/MIT
     });
 
     //the dependency map keeps track of individual dependency structures and all dependencies registered with the system
-    var dependencyMap = {
+    var dependencyInterface = {
       /** @private */
       _dependencies: {},
       /** @private */
       _dependencyCount: 0,
+
+      /** @protected */
+      /** @param {?Dependency|Object|string} dep */
+      getNumTotalDependencies: function(dep) {
+        if (!dep) return this._dependencyCount;
+        dep = this.locateDependency(dep);
+        var visited = [];
+
+        function recursiveCounter(ctx) {
+          var count = 1,
+              c,
+              length = ctx.dependentOn.length,
+              nextCtx;
+
+          for (c = 0; c < length; c++) {
+            nextCtx = ctx.dependentOn[c];
+            if (indexOfDependency(visited, nextCtx) === -1) count += recursiveCounter(nextCtx);
+            visited.push(nextCtx);
+          }
+
+          return count;
+        }
+
+        return recursiveCounter(dep);
+      },
+
+      /** @protected */
+      /** @param {?Dependency|Object|string} dep */
+      getNumTerminalDependencies: function(dep) {
+        if(!dep) dep = this.locatePageDependency();
+        else dep = this.locateDependency(dep);
+        var visited = [];
+
+        function recursiveCounter(ctx) {
+          var count = ctx.status in terminalStatuses ? 1 : 0,
+              c,
+              length = ctx.dependentOn.length,
+              nextCtx;
+
+          for (c = 0; c < length; c++) {
+            nextCtx = ctx.dependentOn[c];
+            if (indexOfDependency(visited, nextCtx) === -1) count += recursiveCounter(nextCtx);
+            visited.push(nextCtx);
+          }
+
+          return count;
+        }
+
+        return recursiveCounter(dep);
+      },
+
+      _handlers: {},
+
+      //sets an event handler
+      /** @protected */
+      on: function(event, handler) {
+        if (!this._handlers[event]) this._handlers[event] = [];
+        this._handlers[event].push(handler);
+      },
+
+      //triggers an event
+      /** @protected */
+      emit: function(event, data) {
+        var handlers = this._handlers[event];
+        if (!handlers) return;
+
+        for(var c = 0, length = handlers.length; c < length; c++) handlers[c].call(null, extend({}, data));
+      },
 
       /** @protected */
       empty: function () {
@@ -1214,8 +1284,17 @@ http://opensource.org/licenses/MIT
 
       //locates the "page" dependency
       /** @protected */
-      locatePageDependency: function() {
+      locatePageDependency: function () {
         return this._dependencies[page];
+      },
+
+      /** creates the "page" dependency
+       * @protected */
+      createPageDependency: function() {
+        var pageDependency = new Dependency(page, page);
+        this.addDependency(pageDependency);
+        pageDependency.init();
+        return pageDependency;
       },
 
       //locates a dependency based off of it being considered "interactive"
@@ -1317,7 +1396,7 @@ http://opensource.org/licenses/MIT
 
         //test to see if all known dependencies are in a terminal state
         index = this._dependencies.length;
-        while(index--) {
+        while (index--) {
           status = this._dependencies[index].status;
           if (status in terminalStatuses) {
             return false;
@@ -1334,7 +1413,7 @@ http://opensource.org/licenses/MIT
       if (allReadyFired) return;
       allReadyFired = true;
       var index = readyCallbacks.length;
-      while(index--) {
+      while (index--) {
         readyCallbacks[index]();
       }
     }
@@ -1346,7 +1425,7 @@ http://opensource.org/licenses/MIT
       var timeout = configuration["pollingTimeout"];
       setTimeout(function poll() {
         if (!allReadyFired) {
-          if (dependencyMap.testCompleteness()) {
+          if (dependencyInterface.testCompleteness()) {
             allReady();
           } else {
             setTimeout(poll, timeout);
@@ -1375,7 +1454,7 @@ http://opensource.org/licenses/MIT
           /** @type {Dependency} */         dep,
           /** @type {Dependency} */         executingDependency,
           /** @type {boolean} */            delayInit,
-          /** @type {boolean} */            initialUsing = dependencyMap.empty();
+          /** @type {boolean} */            initialUsing = dependencyInterface.empty();
 
 
       switch (getType(src, true)) {
@@ -1402,25 +1481,21 @@ http://opensource.org/licenses/MIT
         executingDependency = hdnDepRef;
       } else if (initialUsing || inPageBlock) {
         //the first using call and any calls made in the "page" context are to be dependent on the page itself
-        executingDependency = dependencyMap.locatePageDependency();
-        if(!executingDependency) {
-          executingDependency = new Dependency(page, page);
-          dependencyMap.addDependency(executingDependency);
-          executingDependency.init();
-        }
+        executingDependency = dependencyInterface.locatePageDependency();
+        if(!executingDependency) executingDependency = dependencyInterface.createPageDependency();
         //the page dependency must now reevaluate whether or not it's complete, so it must be in the resolved state
-        if(executingDependency.status === complete) executingDependency.status = resolved;
+        if (executingDependency.status === complete) executingDependency.status = resolved;
       } else if (ieLteTen()) {
         //earlier versions of IE may not execute scripts in the right order, but they do mark a script as interactive
-        executingDependency = dependencyMap.locateInteractiveDependency();
+        executingDependency = dependencyInterface.locateInteractiveDependency();
       } else if ("currentScript" in document) {
         //newer browsers will keep track of the currently executing script
-        executingDependency = dependencyMap.locateCurrentScriptDependency();
+        executingDependency = dependencyInterface.locateCurrentScriptDependency();
       }
 
       index = sourceList.length;
-      while(index--) {
-        dep = dependencyMap.locateDependency(sourceList[index]);
+      while (index--) {
+        dep = dependencyInterface.locateDependency(sourceList[index]);
         if (!dep) {
           //no existing entry for this source file, create one
           switch (getType(sourceList[index], true)) {
@@ -1439,7 +1514,7 @@ http://opensource.org/licenses/MIT
                                    sourceList[index]["exports"]);
               break;
           }
-          dependencyMap.addDependency(dep);
+          dependencyInterface.addDependency(dep);
           if (delayInit) {
             //this dependency is dependent on another dependency...
             //leave the dependency uninitialized, and run a using call on the other 
@@ -1464,7 +1539,7 @@ http://opensource.org/licenses/MIT
       if (executingDependency) {
         //in this case, we know up front what the base file is, so make it depend on the new dependencies
         index = dependencies.length;
-        while(index--) {
+        while (index--) {
           executingDependency.dependOn(dependencies[index]);
           if (hdnDepRef) {
             dependencies[index].addResolutionCallback(callback);
@@ -1477,10 +1552,10 @@ http://opensource.org/licenses/MIT
       } else {
         //we don't currently know what the base file is, so create a fake one and have it get resolved later
         usingDep = new Dependency(usingContext + usingIndex++, usingContext, src["noExtension"], src["backup"], name, src["minified"]);
-        dependencyMap.addDependency(usingDep);
+        dependencyInterface.addDependency(usingDep);
 
         index = dependencies.length;
-        while(index--) {
+        while (index--) {
           usingDep.dependOn(dependencies[index]);
         }
 
@@ -1563,6 +1638,15 @@ http://opensource.org/licenses/MIT
     using.page["css"] = using.page.css;
 
     /** @param {function()} callback */
+    using.page.progress = function (callback) {
+      if(typeof(callback) !== "function") throw new Error("callback must be a function");
+      dependencyInterface.on("dependency-status-terminal", function() {
+        callback.call(null, dependencyInterface.getNumTotalDependencies(), dependencyInterface.getNumTerminalDependencies());
+      });
+    }
+    using.page["progress"] = using.page.progress;
+
+    /** @param {function()} callback */
     using.ready = function (callback) {
       readyCallbacks.push(callback);
       return using;
@@ -1609,7 +1693,7 @@ http://opensource.org/licenses/MIT
 
         case array:
           index = src.length;
-          while(index--) {
+          while (index--) {
             src[index] = fixSourceForCss(src[index]);
           }
           return using(src, callback);
