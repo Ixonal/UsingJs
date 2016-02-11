@@ -1563,7 +1563,7 @@ http://opensource.org/licenses/MIT
 
         if (callback) usingDep.addResolutionCallback(callback);
         if (name) usingDep.name = name;
-        usingDep.init();
+        //usingDep.init();
 
         if (!initialUsing && !inPageBlock && !ieLteTen()) {
           unknownDependencies.push(usingDep);
