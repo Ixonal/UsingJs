@@ -89,7 +89,8 @@ For example, assume there are three files, A.js, B.js, and C.js
 **A.js:**
 
     console.log("in A");
-    using("B", function() {
+    using("B", function(imports) {
+      var B = imports.B;
       console.log("in A's callback");
       function A() {}
       A.prototype = new B();
@@ -97,23 +98,26 @@ For example, assume there are three files, A.js, B.js, and C.js
       var test = new A();
       console.log(test instanceof B);
       console.log(test instanceof C);
+      return A;
     });
 
 **B.js:**
 
     console.log("in B");
-    using("C", function() {
+    using("C", function(imports) {
+      var C = imports.C;
       console.log("in B's callback");
       function B() {}
       B.prototype = new C();
     });
 
 **C.js:**
-
     console.log("in C");
-    
-    function C() {}
-    C.prototype = {}
+    using([], function() {
+      function C() {}
+      C.prototype = {}
+      return C;
+    });
 
 **The output would end up being:**
 
