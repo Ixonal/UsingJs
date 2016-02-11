@@ -1212,7 +1212,7 @@ http://opensource.org/licenses/MIT
       _dependencyCount: 0,
 
       /** @protected */
-      /** @param {?Dependency|Object|string} dep */
+      /** @param {(Dependency|Object|string)=} dep */
       getNumTotalDependencies: function(dep) {
         if (!dep) return this._dependencyCount;
         dep = this.locateDependency(dep);
@@ -1237,7 +1237,7 @@ http://opensource.org/licenses/MIT
       },
 
       /** @protected */
-      /** @param {?Dependency|Object|string} dep */
+      /** @param {(Dependency|Object|string)=} dep */
       getNumTerminalDependencies: function(dep) {
         if(!dep) dep = this.locatePageDependency();
         else dep = this.locateDependency(dep);
@@ -1264,14 +1264,22 @@ http://opensource.org/licenses/MIT
       _handlers: {},
 
       //sets an event handler
-      /** @protected */
+      /** 
+       * @protected 
+       * @param {string} event
+       * @param {function()} handler
+       */
       on: function(event, handler) {
         if (!this._handlers[event]) this._handlers[event] = [];
         this._handlers[event].push(handler);
       },
 
       //triggers an event
-      /** @protected */
+      /** 
+       * @protected
+       * @param {string} event
+       * @param {?=} data
+      */
       emit: function(event, data) {
         var handlers = this._handlers[event];
         if (!handlers) return;
