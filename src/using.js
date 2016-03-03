@@ -39,7 +39,9 @@ http://opensource.org/licenses/MIT
 
       inPageBlock = false,
 
-      document = global.document,
+      document = global.document || {
+        getElementsByTagName: function() { return []; }
+      },
 
       //various reused type definitions
       /** @type {string} 
@@ -348,16 +350,19 @@ http://opensource.org/licenses/MIT
       if (!configuration["browser"]) extend(configuration, detectBrowser());
 
       //determining the environment so that later we will know what method to use to import files
-      configuration["environment"] = (typeof module !== 'undefined' && this.module !== module ? node : (global['document'] ? webbrowser : webworker));
+      configuration["environment"] = (typeof global["module"] !== 'undefined' && this["module"] !== global["module"] ? node : (global['document'] ? webbrowser : webworker));
 
-      var scriptTag = locateUsingScriptTag();
+      var scriptTag = locateUsingScriptTag(),
+          scriptRoot, styleRoot, initialUsing, initialStyleUsing;
 
-      if (!scriptTag) throw new Error("Could not locate the using.js script include. \nPlease specify the name of the source file in the configuration.");
-
-      var scriptRoot = scriptTag.getAttribute("data-script-root") || (options && options["scriptRoot"]) || configuration["scriptRoot"],
-          styleRoot = scriptTag.getAttribute("data-style-root") || (options && options["styleRoot"]) || configuration["styleRoot"],
-          initialUsing = scriptTag.getAttribute("data-using"),
-          initialStyleUsing = scriptTag.getAttribute("data-using-css");
+      //if we found a script tag, go ahead and check for some info that may be included in it
+      if(scriptTag) {
+        scriptRoot = scriptTag.getAttribute("data-script-root") || (options && options["scriptRoot"]) || configuration["scriptRoot"];
+        styleRoot = scriptTag.getAttribute("data-style-root") || (options && options["styleRoot"]) || configuration["styleRoot"];
+        initialUsing = scriptTag.getAttribute("data-using");
+        initialStyleUsing = scriptTag.getAttribute("data-using-css");
+      }
+      
 
       //set up the script root
       if (scriptRoot && scriptRoot.substr(scriptRoot.length - 1, 1) !== "/") {
@@ -1327,7 +1332,7 @@ http://opensource.org/licenses/MIT
       locateCurrentScriptDependency: function () {
         var _this = this, index, dep, currentScript = document["currentScript"];
 
-        if (!currentScript.src) return null;
+        if (!currentScript || !currentScript.src) return null;
 
         for (index in _this._dependencies) {
           dep = _this._dependencies[index];
@@ -1651,6 +1656,7 @@ http://opensource.org/licenses/MIT
     using.page.progress = function (callback) {
       if(typeof(callback) !== "function") throw new Error("callback must be a function");
       dependencyInterface.on("dependency-status-terminal", function() {
+        /** @suppress {checkTypes} */
         callback.call(null, dependencyInterface.getNumTotalDependencies(), dependencyInterface.getNumTerminalDependencies());
       });
     }

@@ -1,0 +1,23 @@
+{
+  "name": "UsingJs",
+  "description": "Javascript asynchronous module loader",
+  "repository": "https://github.com/Ixonal/UsingJs",
+  "license": "MIT",
+  
+  "devDependencies": {
+    "gulp": "^3.9.1",
+    "gulp-watch": "^4.3.5",
+	  "gulp-plumber": "^1.1.0",
+  	"gulp-debug": "^2.1.2",
+    "gulp-rename": "^1.2.2",
+    "gulp-jasmine": "^2.3.0",
+  	"del": "^2.2.0",
+    "run-sequence": "^1.1.5",
+    "google-closure-compiler": "^20151216.0.0",
+    "karma": "^0.13.21",
+    "karma-jasmine": "^0.3.7",
+    "karma-phantomjs-launcher": "^1.0.0",
+    "karma-spec-reporter": "^0.0.24",
+    "phantomjs-prebuilt": "^2.1.4"
+  }
+}
