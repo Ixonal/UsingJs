@@ -14,8 +14,7 @@ function build(glob) {
              .pipe(closureCompiler({
                js_output_file: "using.min.js",
                compilation_level: "ADVANCED_OPTIMIZATIONS",
-               warning_level: "VERBOSE",
-               output_wrapper: "(function() {%output%})()"
+               warning_level: "VERBOSE"
              }))
              .pipe(rename(function(path) {
                path.suffix = ".min";
