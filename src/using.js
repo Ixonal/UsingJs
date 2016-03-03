@@ -1026,6 +1026,7 @@ http://opensource.org/licenses/MIT
 
         _this.status = error;
         dependencyInterface.emit("dependency-status-terminal");
+        dependencyInterface.emit("dependency-failed", { "dependency": _this });
 
         target = _this.useBackup ? _this.backup : _this.src;
         if (target === page) target = "page";
@@ -1450,6 +1451,28 @@ http://opensource.org/licenses/MIT
         polling = false;
       }, timeout);
     }
+    
+    var failedDependency, failureCallbacks = [];
+    
+    function handleFailCallback(callback) {
+      failureCallbacks.push(callback);
+      
+      if(failedDependency) {
+        emitFailCallbacks();
+      }
+    }
+    
+    function emitFailCallbacks() {
+      for(var index = 0, length = failureCallbacks.length; index < length; index++) {
+        failureCallbacks[index].call(null, failedDependency.name || failedDependency.src);
+      }
+      failureCallbacks.splice(0, failureCallbacks.length);
+    }
+    
+    dependencyInterface.on("dependency-failed", function(info) {
+      failedDependency = info.dependency;
+      emitFailCallbacks();
+    });
 
     var /** @type {number} */ usingIndex = 0;
 
@@ -1661,6 +1684,12 @@ http://opensource.org/licenses/MIT
       });
     }
     using.page["progress"] = using.page.progress;
+    
+    using.page.failure = function(callback) {
+      if(typeof(callback) !== "function") throw new Error("callback must be a function");
+      handleFailCallback(callback);
+    }
+    using.page["failure"] = using.page.fail;
 
     /** @param {function()} callback */
     using.ready = function (callback) {
