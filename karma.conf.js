@@ -5,6 +5,7 @@ module.exports = function(config) {
     reporters: ["spec"],
     browsers: ["PhantomJS"],
     files: [
+    { pattern: "test/resources/**/*.js", included: false },
       "./src/using.js",
       "./test/using-spec.js"
     ]

@@ -84,7 +84,10 @@ http://opensource.org/licenses/MIT
       usingContext = "<||usingContext||>",
       /** @type {string} 
           @const */
-      page = "<||page||>",
+      pageType = "<||page||>",
+      /** @type {string}
+          @const */
+      pageSrc = "page",
 
       //valid environments
       /** @type {string} 
@@ -160,6 +163,8 @@ http://opensource.org/licenses/MIT
       error = 9,
 
       terminalStatuses = {},
+      readyStatuses = {},
+      completingStatuses = {},
 
       /** @type {string} */
       interactive = "interactive";
@@ -168,7 +173,40 @@ http://opensource.org/licenses/MIT
     terminalStatuses[withdrawn] = true;
     terminalStatuses[destroyed] = true;
     terminalStatuses[error] = true;
+    
+    readyStatuses[resolved] = true;
+    readyStatuses[finalizing] = true;
+    readyStatuses[complete] = true;
+    
+    completingStatuses[finalizing] = true;
+    completingStatuses[complete] = true;
 
+    var handlers = {};
+    
+    //sets an event handler
+    /** 
+     * @protected 
+     * @param {string} event
+     * @param {function()} handler
+     */
+    function on(event, handler) {
+      if (!handlers[event]) handlers[event] = [];
+      handlers[event].push(handler);
+    }
+
+    //triggers an event
+    /** 
+     * @protected
+     * @param {string} event
+     * @param {?=} data
+    */
+    function emit(event, data) {
+      var evtHandlers = handlers[event];
+      if (!evtHandlers) return;
+
+      for(var c = 0, length = evtHandlers.length; c < length; c++) evtHandlers[c].call(null, extend({}, data));
+    }
+    
     //general form of dependency: 
     //{
     //  src: "path/to/source",
@@ -298,7 +336,7 @@ http://opensource.org/licenses/MIT
              dep1["noExtension"] === dep2["noExtension"] &&
              dep1["backup"] === dep2["backup"];
     }
-
+    
     //detects the user's browser and version
     function detectBrowser() {
 
@@ -363,8 +401,8 @@ http://opensource.org/licenses/MIT
         initialStyleUsing = scriptTag.getAttribute("data-using-css");
       }
       
-
       //set up the script root
+      scriptRoot = scriptRoot || configuration["scriptRoot"];
       if (scriptRoot && scriptRoot.substr(scriptRoot.length - 1, 1) !== "/") {
         //make sure we have that ending / for later concatination
         scriptRoot += "/";
@@ -448,7 +486,7 @@ http://opensource.org/licenses/MIT
             return js; //can't infer what we have, assume it's javascript
           }
         case dependency:
-          if (src.type === page || src.type === usingContext) return js;
+          if (src.type === pageType || src.type === usingContext) return js;
           return src.type || getUsingType(src.src);
       }
     }
@@ -707,6 +745,7 @@ http://opensource.org/licenses/MIT
       this.backup = backup;
       this.noExtension = noExtension;
       this.resolutionCallbacks = [];
+      this.resolutionDeps = [];
       this.dependencyFor = [];
       this.dependentOn = [];
       this.exports = {};
@@ -734,6 +773,8 @@ http://opensource.org/licenses/MIT
       dependentOn: null,          //dependencies this dependency is observing
       /** @protected */
       resolutionCallbacks: null,  //list of callbacks to run when the dependency is resolved,
+      /** @protected */
+      resolutionDeps: null,       //list of dependencies for each resolution callback
       /** @private */
       requestObj: null,           //reference to the DOM element that is including the script into the page
       /** @protected */
@@ -796,48 +837,53 @@ http://opensource.org/licenses/MIT
         }
 
         //run any resolution callbacks
-        index = _this.resolutionCallbacks.length;
-        while (index--) {
-          exports = _this.resolutionCallbacks[index](_this.getDependencyExports(), _this.exports);
-          switch (getType(exports, true)) {
-            case object:
-              extend(_this.exports, exports);
-              break;
-
-            default:
-              if (exports) _this.exports = exports;
-              break;
-          }
-        }
+        _this.runResolutionCallbacks();
 
         //now we are officially considered complete
-        this.status = complete;
-        dependencyInterface.emit("dependency-status-terminal");
+        _this.status = complete;
+        emit("dependency-status-terminal");
 
         //notify anything dependent on this
         index = _this.dependencyFor.length;
         while (index--) {
-          if (_this.dependencyFor[index].status != complete) {
-            _this.dependencyFor[index].notify();
+          var parentDep = _this.dependencyFor[index];
+          if (parentDep.status != complete) {
+            parentDep.notify();
+          } else {
+            parentDep.runResolutionCallbacks();
           }
         }
 
         //check to see if everything else is ready
-        if (_this.type !== page && dependencyInterface.testCompleteness()) {
+        if (_this.type !== pageType && dependencyInterface.testCompleteness()) {
           allReady();
+        }
+      },
+      
+      setExports: function(exports) {
+        switch (getType(exports, true)) {
+          case object:
+            extend(this.exports, exports);
+            break;
+
+          default:
+            if (exports) this.exports = exports;
+            break;
         }
       },
 
       /** @protected */
-      getDependencyExports: function () {
+      getDependencyExports: function (deps) {
         var _this = this,
             index,
             dep,
             exports = {};
+            
+        deps = deps || _this.dependentOn;
 
-        index = _this.dependentOn.length;
+        index = deps.length;
         while (index--) {
-          dep = _this.dependentOn[index];
+          dep = deps[index];
           if (!isEmptyObject(dep.exports)) {
             drillPathAndInsert(exports, dep.name || dep.src, dep.exports);
           } else if (dep.exportProp) {
@@ -862,24 +908,20 @@ http://opensource.org/licenses/MIT
           _this.finalize();
         }
       },
-
-      /** @protected */
-      isReady: function (path) {
-        var _this = this, currentDep;
-
-        //if the status is complete, then it's definitely ready
-        if (_this.status === complete) return true;
-
-        //if the status isn't resolved, there's no way it could be ready
-        if (_this.status !== resolved) return false;
-
+      
+      dependenciesReady: function(path) {
+        var _this = this, 
+            currentDep, 
+            index = _this.dependentOn.length;
+        
         path = path || [];
         path.push(_this);
-
-        for (var index = _this.dependentOn.length - 1; index >= 0; index--) {
-          currentDep = _this.dependentOn[index];
+        
+        while(index--) {
+          currentDep = this.dependentOn[index];
+          
           if (indexOf(path, currentDep) !== -1) {
-            //if the current dependency was found in the path, just notify the user and keep going
+            // if the current dependency was found in the path, just notify the user and keep going
             if (configuration["debug"]) {
               var errorMsg = "Cyclic dependency found (non-terminal): \n", errorIndex;
 
@@ -892,14 +934,21 @@ http://opensource.org/licenses/MIT
 
               emitWarning(errorMsg);
             }
-            continue;
+          } else {
+            if(!currentDep.isComplete()) return false;
           }
-
-          //yes, this is recursive
-          if (!currentDep.isReady(path)) return false;
         }
-
+        
         return true;
+      },
+
+      /** @protected */
+      isReady: function (path) {
+        return this.status in readyStatuses && this.dependenciesReady(path);
+      },
+      
+      isComplete: function(path) {
+        return this.status in completingStatuses && this.dependenciesReady(path);
       },
 
       /** @protected */
@@ -927,15 +976,46 @@ http://opensource.org/licenses/MIT
           _this.notify();
         }
       },
+      
+      /** @protected */
+      /** @param {Array=} callbacks */
+      runResolutionCallbacks: function(callbacks, callbackDeps) {
+        //if callbacks aren't provided, use the ones already added to the dependency
+        callbacks = (callbacks || this.resolutionCallbacks).slice(0);
+        callbackDeps = (callbackDeps || this.resolutionDeps).slice(0);
+        
+        if(!this.isReady()) {
+          var i = callbacks.length;
+          while(i--) this.addResolutionCallback(callbacks[i]);
+          return;
+        }
+        
+        var callback, deps, exports, index;
+            
+        //run all the callbacks, setting exports as needed
+        while((callback = callbacks.pop()) && (deps = callbackDeps.pop())) {
+          exports = callback.call(null, this.getDependencyExports(deps), this.exports);
+          this.setExports(exports);
+          
+          index = indexOf(this.resolutionCallbacks, callback);
+          if(index > -1) {
+            this.resolutionCallbacks.splice(index, 1);
+          }
+        }
+      },
 
       /** @protected */
       /** @param {function()} callback */
-      addResolutionCallback: function (callback) {
+      addResolutionCallback: function (callback, callbackDeps) {
         if (getType(callback) !== func) throw new Error("dependency resolution callback function must be a function.");
-        if (this.status === finalizing || this.status === complete) {
-          callback();
+        
+        if (this.isComplete()) {
+          this.runResolutionCallbacks([callback], [callbackDeps]);
         } else {
-          this.resolutionCallbacks.push(callback);
+          if(indexOf(this.resolutionCallbacks, callback) === -1) {
+            this.resolutionCallbacks.push(callback);
+            this.resolutionDeps.push(callbackDeps);
+          }
         }
       },
 
@@ -1025,18 +1105,18 @@ http://opensource.org/licenses/MIT
         var _this = this, index, dep, target, parent = arguments[0], message;
 
         _this.status = error;
-        dependencyInterface.emit("dependency-status-terminal");
-        dependencyInterface.emit("dependency-failed", { "dependency": _this });
+        emit("dependency-status-terminal");
+        emit("dependency-failed", { dependency: _this });
 
         target = _this.useBackup ? _this.backup : _this.src;
-        if (target === page) target = "page";
+        if (target === pageSrc) target = "page";
         if (target === usingContext) target = "using context";
 
         message = "UsingJs: An error has occurred when loading " + target;
 
         if (parent) {
           target = parent.useBackup ? parent.backup : parent.src;
-          if (target === page) target = "page";
+          if (target === pageSrc) target = "page";
           if (target === usingContext) target = "using context";
           message += " - dependency " + target + " registered an error";
         }
@@ -1045,7 +1125,6 @@ http://opensource.org/licenses/MIT
         index = _this.dependencyFor.length;
         while (index--) {
           dep = _this.dependencyFor[index];
-          //if (dep.status !== error && dep.status !== withdrawn && dep.status !== complete) {
           if (!(dep.status in terminalStatuses)) {
             dep.error(_this);
           }
@@ -1072,7 +1151,7 @@ http://opensource.org/licenses/MIT
             retVal += ".min";
           }
 
-          if (!_this.noExtension && _this.type !== usingContext && _this.type !== page && retVal.substr(retVal.length - _this.type.length) !== _this.type) {
+          if (!_this.noExtension && _this.type !== usingContext && _this.type !== pageType && retVal.substr(retVal.length - _this.type.length) !== _this.type) {
             //type is not already included, add it
             retVal += "." + _this.type;
           }
@@ -1161,7 +1240,6 @@ http://opensource.org/licenses/MIT
             }
           }
 
-
           if (_this.requestObj.addEventListener) {
             //can use addEventListener
             _this.requestObj.addEventListener("load", function () {
@@ -1200,7 +1278,7 @@ http://opensource.org/licenses/MIT
         var _this = this;
         if (_this.status !== uninitiated) return;
 
-        if (_this.type !== usingContext && _this.type !== page) {
+        if (_this.type !== usingContext && _this.type !== pageType) {
           _this.status = initiated;
           _this.load();
         } else {
@@ -1267,30 +1345,23 @@ http://opensource.org/licenses/MIT
         return recursiveCounter(dep);
       },
 
-      _handlers: {},
-
-      //sets an event handler
-      /** 
-       * @protected 
-       * @param {string} event
-       * @param {function()} handler
-       */
-      on: function(event, handler) {
-        if (!this._handlers[event]) this._handlers[event] = [];
-        this._handlers[event].push(handler);
+      
+      failedDependency: null,
+      failureCallbacks: [],
+    
+      handleFailCallback: function (callback) {
+        this.failureCallbacks.push(callback);
+        
+        if(this.failedDependency) {
+          this.emitFailCallbacks();
+        }
       },
-
-      //triggers an event
-      /** 
-       * @protected
-       * @param {string} event
-       * @param {?=} data
-      */
-      emit: function(event, data) {
-        var handlers = this._handlers[event];
-        if (!handlers) return;
-
-        for(var c = 0, length = handlers.length; c < length; c++) handlers[c].call(null, extend({}, data));
+      
+      emitFailCallbacks: function () {
+        for(var index = 0, length = this.failureCallbacks.length; index < length; index++) {
+          this.failureCallbacks[index].call(null, this.failedDependency.name || this.failedDependency.src);
+        }
+        this.failureCallbacks.splice(0, this.failureCallbacks.length);
       },
 
       /** @protected */
@@ -1301,14 +1372,10 @@ http://opensource.org/licenses/MIT
       //locates the "page" dependency
       /** @protected */
       locatePageDependency: function () {
-        return this._dependencies[page];
-      },
-
-      /** creates the "page" dependency
-       * @protected */
-      createPageDependency: function() {
-        var pageDependency = new Dependency(page, page);
-        this.addDependency(pageDependency);
+        if(this._dependencies[pageType]) return this._dependencies[pageType];
+        
+        var pageDependency = new Dependency(pageSrc, pageType);
+        this._dependencies[pageType] = pageDependency;
         pageDependency.init();
         return pageDependency;
       },
@@ -1404,8 +1471,33 @@ http://opensource.org/licenses/MIT
 
         return this;
       },
-
-
+      
+      /**
+       * Returns whether or not all given dependencies exist. If any don't exist, it will return false
+       * @protected
+       * @param {string|Object|Array|Dependency} src
+       */
+      dependenciesExist: function(src) {
+        if(getType(src, true) !== array) {
+          src = [src];
+        }
+        
+        var index = src.length;
+        while(index--) {
+          switch(getType(src[index], true)) {
+            case string:
+              if(!this._dependencies[src]) return false;
+              break;
+              
+            case object: 
+              if(!this._dependencies[src.src]) return false;
+              break;
+          }
+        }
+        
+        return true;
+      },
+      
       /** @protected */
       testCompleteness: function () {
         var index, status;
@@ -1452,26 +1544,10 @@ http://opensource.org/licenses/MIT
       }, timeout);
     }
     
-    var failedDependency, failureCallbacks = [];
-    
-    function handleFailCallback(callback) {
-      failureCallbacks.push(callback);
-      
-      if(failedDependency) {
-        emitFailCallbacks();
-      }
-    }
-    
-    function emitFailCallbacks() {
-      for(var index = 0, length = failureCallbacks.length; index < length; index++) {
-        failureCallbacks[index].call(null, failedDependency.name || failedDependency.src);
-      }
-      failureCallbacks.splice(0, failureCallbacks.length);
-    }
-    
-    dependencyInterface.on("dependency-failed", function(info) {
-      failedDependency = info.dependency;
-      emitFailCallbacks();
+    //what to do when a dependency fails
+    on("dependency-failed", function(info) {
+      dependencyInterface.failedDependency = info.dependency;
+      dependencyInterface.emitFailCallbacks();
     });
 
     var /** @type {number} */ usingIndex = 0;
@@ -1520,15 +1596,20 @@ http://opensource.org/licenses/MIT
       } else if (initialUsing || inPageBlock) {
         //the first using call and any calls made in the "page" context are to be dependent on the page itself
         executingDependency = dependencyInterface.locatePageDependency();
-        if(!executingDependency) executingDependency = dependencyInterface.createPageDependency();
-        //the page dependency must now reevaluate whether or not it's complete, so it must be in the resolved state
-        if (executingDependency.status === complete) executingDependency.status = resolved;
+        
       } else if (ieLteTen()) {
         //earlier versions of IE may not execute scripts in the right order, but they do mark a script as interactive
         executingDependency = dependencyInterface.locateInteractiveDependency();
+        
+        if(!executingDependency) executingDependency = dependencyInterface.locatePageDependency();
+        
       } else if ("currentScript" in document) {
         //newer browsers will keep track of the currently executing script
         executingDependency = dependencyInterface.locateCurrentScriptDependency();
+        
+        //in this case, if there is no executing dependency, assume that we're on the page
+        if(!executingDependency) executingDependency = dependencyInterface.locatePageDependency();
+        
       }
 
       index = sourceList.length;
@@ -1580,13 +1661,15 @@ http://opensource.org/licenses/MIT
         while (index--) {
           executingDependency.dependOn(dependencies[index]);
           if (hdnDepRef) {
-            dependencies[index].addResolutionCallback(callback);
+            dependencies[index].addResolutionCallback(callback, dependencies);
           }
         }
         if (callback && !hdnDepRef) {
-          executingDependency.addResolutionCallback(callback);
+          executingDependency.addResolutionCallback(callback, dependencies);
         }
         if (name) executingDependency.name = name;
+        
+        //if(!(executingDependency.status in terminalStatuses)) executingDependency.notify();
       } else {
         //we don't currently know what the base file is, so create a fake one and have it get resolved later
         usingDep = new Dependency(usingContext + usingIndex++, usingContext, src["noExtension"], src["backup"], name, src["minified"]);
@@ -1597,7 +1680,7 @@ http://opensource.org/licenses/MIT
           usingDep.dependOn(dependencies[index]);
         }
 
-        if (callback) usingDep.addResolutionCallback(callback);
+        if (callback) usingDep.addResolutionCallback(callback, dependencies);
         if (name) usingDep.name = name;
         //usingDep.init();
 
@@ -1678,7 +1761,7 @@ http://opensource.org/licenses/MIT
     /** @param {function()} callback */
     using.page.progress = function (callback) {
       if(typeof(callback) !== "function") throw new Error("callback must be a function");
-      dependencyInterface.on("dependency-status-terminal", function() {
+      on("dependency-status-terminal", function() {
         /** @suppress {checkTypes} */
         callback.call(null, dependencyInterface.getNumTotalDependencies(), dependencyInterface.getNumTerminalDependencies());
       });
@@ -1687,7 +1770,7 @@ http://opensource.org/licenses/MIT
     
     using.page.failure = function(callback) {
       if(typeof(callback) !== "function") throw new Error("callback must be a function");
-      handleFailCallback(callback);
+      dependencyInterface.handleFailCallback(callback);
     }
     using.page["failure"] = using.page.fail;
 
