@@ -69,17 +69,19 @@ describe("UsingJs", function() {
     
     beforeAll(function() {
       using.config({
-        scriptRoot: "/base/test",
-        debug: true
+        scriptRoot: "/base/test"
       });
       using.alias("testSource", "resources/testSource");
+      using.alias("listAlias", ["resources/listFileOne", "resources/listFileTwo", "resources/listFileThree"]);
     });
     
     it("imports a file", function(done) {
       using("resources/testSource", function(imports) {
         var testSource = imports.resources.testSource;
+        
         expect(testSource).not.toBe(null);
         expect(testSource.testProp).toBe("testVal");
+        
         done();
       });
     });
@@ -87,17 +89,78 @@ describe("UsingJs", function() {
     it("imports as an alias", function(done) {
       using("testSource", function(imports) {
         var testSource = imports.resources.testSource;
+        
         expect(testSource).not.toBe(null);
         expect(testSource.testProp).toBe("testVal");
+        
         done();
       });
     });
     
-    it("includes dependencies of dependencies", function(done) {
+    it("imports dependencies of dependencies", function(done) {
       using("resources/A", function(imports) {
         var a = new imports.resources.A();
         
         expect(a.cFunc()).toBe("in C");
+        done();
+      });
+    });
+    
+    it("imports lists of files", function(done) {
+      using(["resources/listFileOne", "resources/listFileTwo", "resources/listFileThree"], function(imports) {
+        var one = imports.resources.listFileOne,
+            two = imports.resources.listFileTwo,
+            three = imports.resources.listFileThree;
+            
+        expect(one.prop).toBe(1);
+        expect(two.prop).toBe(2);
+        expect(three.prop).toBe(3);
+        
+        done();
+      });
+    });
+    
+    it("imports lists as an alias", function(done) {
+      using("listAlias", function(imports){
+        var one = imports.resources.listFileOne,
+            two = imports.resources.listFileTwo,
+            three = imports.resources.listFileThree;
+            
+        expect(one.prop).toBe(1);
+        expect(two.prop).toBe(2);
+        expect(three.prop).toBe(3);
+        
+        done();
+      });
+    });
+    
+    it("imports files that assign to global", function(done) {
+      using({ src: "resources/globalVar", exports: "testing.obj", name: "obj" }, function(imports) {
+        var prop = imports.obj.prop;
+        
+        expect(prop).toBe("val");
+        
+        done();
+      });
+    });
+    
+    it("imports files that assign to global that are dependent on files that assign to global", function(done) {
+      using({ src: "resources/globalVarDependent", exports: "testing2", name: "testing2", dependsOn: "resources/globalVar" }, function(imports) {
+        var prop = imports.testing2.prop;
+        
+        expect(prop).toBe("ret");
+        
+        done();
+      });
+    });
+    
+    it("imports from a backup location if the primary fails", function(done) {
+      using({ src: "resources/badTestSource", backup: "resources/testSource" }, function(imports) {
+        var testSource = imports.resources.badTestSource;
+        
+        expect(testSource).not.toBe(null);
+        expect(testSource.testProp).toBe("testVal");
+        
         done();
       });
     });
