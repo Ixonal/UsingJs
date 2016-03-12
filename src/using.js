@@ -979,6 +979,7 @@ http://opensource.org/licenses/MIT
       
       /** @protected */
       /** @param {Array=} callbacks */
+      /** @param {Array=} callbackDeps */
       runResolutionCallbacks: function(callbacks, callbackDeps) {
         //if callbacks aren't provided, use the ones already added to the dependency
         callbacks = (callbacks || this.resolutionCallbacks).slice(0);
@@ -1006,6 +1007,7 @@ http://opensource.org/licenses/MIT
 
       /** @protected */
       /** @param {function()} callback */
+      /** @param {Array=} callbackDeps */
       addResolutionCallback: function (callback, callbackDeps) {
         if (getType(callback) !== func) throw new Error("dependency resolution callback function must be a function.");
         

@@ -6,7 +6,7 @@ module.exports = function(config) {
     browsers: ["PhantomJS"],
     files: [
     { pattern: "test/resources/**/*.js", included: false },
-      "./src/using.js",
+      "./dist/using.min.js",
       "./test/using-spec.js"
     ]
   });
