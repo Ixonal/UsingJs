@@ -18,8 +18,6 @@ http://opensource.org/licenses/MIT
 
       //default configuration settings
       defaultConfiguration = {
-        /** @type {boolean} */
-        "noConflict": false,
         /** @type {string} */
         "scriptRoot": "/",
         /** @type {string} */
@@ -1856,8 +1854,6 @@ http://opensource.org/licenses/MIT
 
     //--------------------------------------------------------//
 
-
-    if (!configuration["noConflict"]) global["using"] = using;
 
     //lastly, if some start scripts were included, call using on them
     if (configuration["initialUsing"]) using.page(configuration["initialUsing"]);

@@ -206,7 +206,6 @@ There are certain global options that can be configured:
 
     {
       srcName: "some/file.js", //string, name of the using script file (if changed)
-      noConflict: false,       //boolean, whether or not using is inserted into the global scope
       scriptRoot: "/",         //string, default script root
       styleRoot: "/",          //string, default style root
       cached: true,            //boolean, whether or not to cache the source files
