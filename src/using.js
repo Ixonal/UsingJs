@@ -1772,7 +1772,7 @@ http://opensource.org/licenses/MIT
       if(typeof(callback) !== "function") throw new Error("callback must be a function");
       dependencyInterface.handleFailCallback(callback);
     }
-    using.page["failure"] = using.page.fail;
+    using.page["failure"] = using.page.failure;
 
     /** @param {function()} callback */
     using.ready = function (callback) {
