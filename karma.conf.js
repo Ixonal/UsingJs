@@ -7,6 +7,7 @@ module.exports = function(config) {
     files: [
     { pattern: "test/resources/**/*.js", included: false },
       "./dist/using.min.js",
+      //"./src/using.js",
       "./test/using-spec.js"
     ]
   });

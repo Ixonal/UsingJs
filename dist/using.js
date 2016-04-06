@@ -397,6 +397,8 @@ http://opensource.org/licenses/MIT
         styleRoot = scriptTag.getAttribute("data-style-root") || (options && options["styleRoot"]) || configuration["styleRoot"];
         initialUsing = scriptTag.getAttribute("data-using");
         initialStyleUsing = scriptTag.getAttribute("data-using-css");
+        
+        configuration["scriptTag"] = scriptTag;
       }
       
       //set up the script root
@@ -436,7 +438,7 @@ http://opensource.org/licenses/MIT
           currentSrc2;
 
       for (index = 0, length = allScriptTags.length; index < length; index++) {
-        currentSrc = allScriptTags[index].src;
+        currentSrc = allScriptTags[index].src.replace(/([#?][\s\w\\]+)+$/, "");
         for (index2 = 0, length2 = usingJs.length; index2 < length2; index2++) {
           currentSrc2 = usingJs[index2];
           if (currentSrc2 && currentSrc.substr(currentSrc.length - currentSrc2.length, currentSrc2.length) === currentSrc2) return allScriptTags[index];
@@ -839,6 +841,7 @@ http://opensource.org/licenses/MIT
 
         //now we are officially considered complete
         _this.status = complete;
+        if(_this.requestObj) _this.requestObj.complete = true;
         emit("dependency-status-terminal");
 
         //notify anything dependent on this
@@ -993,12 +996,17 @@ http://opensource.org/licenses/MIT
             
         //run all the callbacks, setting exports as needed
         while((callback = callbacks.pop()) && (deps = callbackDeps.pop())) {
+          try {
           exports = callback.call(null, this.getDependencyExports(deps), this.exports);
+          } catch(e) {
+            this.error();
+          }
           this.setExports(exports);
           
           index = indexOf(this.resolutionCallbacks, callback);
           if(index > -1) {
             this.resolutionCallbacks.splice(index, 1);
+            this.resolutionDeps.splice(index, 1);
           }
         }
       },
@@ -1067,6 +1075,8 @@ http://opensource.org/licenses/MIT
 
         //incude was loaded and the code should have been executed, so find any unknown dependencies and associate them with this dependency
         while ((dep = unknownDependencies.shift()) !== undefined) {
+          //debugger;
+          
           //we only want using contexts that haven't been destroyed
           if (dep.type !== usingContext || dep.status === destroyed) continue;
 
@@ -1074,6 +1084,8 @@ http://opensource.org/licenses/MIT
           if (dep.name) _this.name = dep.name;
           if (dep.noExtension) _this.noExtension = dep.noExtension;
           if (dep.minified !== undefined) _this.minified = dep.minified;
+          if (dep.backup) _this.backup = dep.backup;
+          if (dep.exports) _this.setExports(dep.exports);
 
           index = dep.dependentOn.length;
           while (index--) {
@@ -1088,11 +1100,14 @@ http://opensource.org/licenses/MIT
           //move all associated callbacks to this dependency
           index = dep.resolutionCallbacks.length;
           while (index--) {
-            _this.addResolutionCallback(dep.resolutionCallbacks[index]);
+            _this.addResolutionCallback(dep.resolutionCallbacks[index], dep.resolutionDeps[index]);
           }
 
           //at this point, remove the outstanding using context
           dependencyInterface.removeDependency(dep);
+          
+          //finally, destroy it
+          dep.destroy();
         }
 
         _this.status = resolved;
@@ -1243,6 +1258,7 @@ http://opensource.org/licenses/MIT
           if (_this.requestObj.addEventListener) {
             //can use addEventListener
             _this.requestObj.addEventListener("load", function () {
+              //if(_this.src === "resources/A") debugger;
               _this.status = loaded;
               _this.resolve();
             }, true);
@@ -1266,8 +1282,16 @@ http://opensource.org/licenses/MIT
             _this.error("Unable to properly attach events with the current browser configuration.");
           }
 
-          //just appending whichever element to the head of the page
-          document.getElementsByTagName("head")[0].appendChild(_this.requestObj);
+          _this.requestObj._dependency = _this;
+
+          //attempt to append the new element to the same container that's holding the "using" script
+          if(configuration["scriptTag"]) {
+            configuration["scriptTag"].parentElement.appendChild(_this.requestObj);
+          } else {
+            //if there is no "using" script tag, just use the body
+            document.getElementsByTagName("body")[0].appendChild(_this.requestObj);
+          }
+          
         } else {
           throw Error("This functionality is not yet implemented");
         }
@@ -1383,12 +1407,12 @@ http://opensource.org/licenses/MIT
       //locates a dependency based off of it being considered "interactive"
       /** @protected */
       locateInteractiveDependency: function () {
-        var index, dep;
-
-        for (index in this._dependencies) {
-          dep = this._dependencies[index];
-          if (dep.requestObj && dep.requestObj.readyState === interactive) {
-            return dep;
+        var allScripts = document.getElementsByTagName("script"), 
+            index;
+            
+        for(index = 0; index < allScripts.length; index++) {
+          if(allScripts[index].readyState === interactive) {
+            return this.getDependencyForScriptTag(allScripts[index]);
           }
         }
 
@@ -1398,17 +1422,28 @@ http://opensource.org/licenses/MIT
       //locates a dependency based off of the "currentScript" property
       /** @protected */
       locateCurrentScriptDependency: function () {
-        var _this = this, index, dep, currentScript = document["currentScript"];
+        var currentScript = document["currentScript"];
 
-        if (!currentScript || !currentScript.src) return null;
-
-        for (index in _this._dependencies) {
-          dep = _this._dependencies[index];
-          if (dep.requestObj && dep.requestObj === currentScript) {
+        return this.getDependencyForScriptTag(currentScript);
+      },
+      
+      locateLastScriptDependency: function() {
+        var allScripts = document.getElementsByTagName("script"),
+            lastScript = allScripts[allScripts.length - 1];
+        
+        return this.getDependencyForScriptTag(lastScript);
+      },
+      
+      getDependencyForScriptTag: function(scriptTag) {
+        if(!scriptTag) return null;
+        
+        for (var index in this._dependencies) {
+          var dep = this._dependencies[index];
+          if (dep.requestObj && dep.requestObj === scriptTag) {
             return dep;
           }
         }
-
+        
         return null;
       },
 
@@ -1593,6 +1628,7 @@ http://opensource.org/licenses/MIT
       if (hdnDepRef) {
         //sneaky sneaky...
         executingDependency = hdnDepRef;
+        
       } else if (initialUsing || inPageBlock) {
         //the first using call and any calls made in the "page" context are to be dependent on the page itself
         executingDependency = dependencyInterface.locatePageDependency();
@@ -1607,11 +1643,9 @@ http://opensource.org/licenses/MIT
         //newer browsers will keep track of the currently executing script
         executingDependency = dependencyInterface.locateCurrentScriptDependency();
         
-        //in this case, if there is no executing dependency, assume that we're on the page
         if(!executingDependency) executingDependency = dependencyInterface.locatePageDependency();
-        
       }
-
+      
       index = sourceList.length;
       while (index--) {
         dep = dependencyInterface.locateDependency(sourceList[index]);
@@ -1682,7 +1716,9 @@ http://opensource.org/licenses/MIT
 
         if (callback) usingDep.addResolutionCallback(callback, dependencies);
         if (name) usingDep.name = name;
-        //usingDep.init();
+        
+        //initialize the new dependency
+        usingDep.init();
 
         if (!initialUsing && !inPageBlock && !ieLteTen()) {
           unknownDependencies.push(usingDep);
@@ -1720,8 +1756,22 @@ http://opensource.org/licenses/MIT
       usingMain(src, callback, name);
       return using;
     }
-
     using["amd"] = using.amd;
+    
+    using.failure = function(callback) {
+      if(typeof(callback) !== "function") throw new Error("callback must be a function");
+      dependencyInterface.handleFailCallback(callback);
+    }
+    using["failure"] = using.failure;
+    
+    using.progress = function(callback) {
+      if(typeof(callback) !== "function") throw new Error("callback must be a function");
+      on("dependency-status-terminal", function() {
+        /** @suppress {checkTypes} */
+        callback.call(null, dependencyInterface.getNumTotalDependencies(), dependencyInterface.getNumTerminalDependencies());
+      });
+    }
+    using["progress"] = using.progress;
 
     //forces using calls to be in the context of the page (as opposed to a script file)
     /** @param {Dependency|Array|function()} opt1 
@@ -1760,17 +1810,12 @@ http://opensource.org/licenses/MIT
 
     /** @param {function()} callback */
     using.page.progress = function (callback) {
-      if(typeof(callback) !== "function") throw new Error("callback must be a function");
-      on("dependency-status-terminal", function() {
-        /** @suppress {checkTypes} */
-        callback.call(null, dependencyInterface.getNumTotalDependencies(), dependencyInterface.getNumTerminalDependencies());
-      });
+      return using.progress(callback);
     }
     using.page["progress"] = using.page.progress;
     
     using.page.failure = function(callback) {
-      if(typeof(callback) !== "function") throw new Error("callback must be a function");
-      dependencyInterface.handleFailCallback(callback);
+      return using.failure(callback);
     }
     using.page["failure"] = using.page.failure;
 
@@ -1854,6 +1899,8 @@ http://opensource.org/licenses/MIT
 
     //--------------------------------------------------------//
 
+    //export using function
+    global["using"] = using;
 
     //lastly, if some start scripts were included, call using on them
     if (configuration["initialUsing"]) using.page(configuration["initialUsing"]);

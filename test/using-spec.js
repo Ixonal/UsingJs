@@ -14,6 +14,16 @@ describe("UsingJs", function() {
     });
     
     
+    it("has failure function (using.failure())", function() {
+      expect(typeof using.failure).toBe("function");
+    });
+    
+    
+    it("has progress function (using.progress())", function() {
+      expect(typeof using.progress).toBe("function");
+    });
+    
+    
     it("has page function (using.page())", function() {
       expect(typeof using.page).toBe("function");
     });
@@ -24,7 +34,7 @@ describe("UsingJs", function() {
     });
     
     
-    if("has page function that has progress function (using.page.progress())", function() {
+    it("has page function that has progress function (using.page.progress())", function() {
       expect(typeof using.page.progress).toBe("function");
     });
     
@@ -170,6 +180,14 @@ describe("UsingJs", function() {
         expect(imports.namespace.testImport).not.toBe(null);
         expect(imports.namespace.testImport.prop).toBe("someVal");
         
+        done();
+      });
+    });
+    
+    it("calls a failure callback on failure", function(done) {
+      using("resources/failingModule");
+      
+      using.failure(function() {
         done();
       });
     });
