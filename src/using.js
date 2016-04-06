@@ -841,7 +841,6 @@ http://opensource.org/licenses/MIT
 
         //now we are officially considered complete
         _this.status = complete;
-        if(_this.requestObj) _this.requestObj.complete = true;
         emit("dependency-status-terminal");
 
         //notify anything dependent on this
@@ -861,6 +860,7 @@ http://opensource.org/licenses/MIT
         }
       },
       
+      /** @protected */
       setExports: function(exports) {
         switch (getType(exports, true)) {
           case object:
@@ -910,6 +910,7 @@ http://opensource.org/licenses/MIT
         }
       },
       
+      /** @protected */
       dependenciesReady: function(path) {
         var _this = this, 
             currentDep, 
@@ -948,6 +949,7 @@ http://opensource.org/licenses/MIT
         return this.status in readyStatuses && this.dependenciesReady(path);
       },
       
+      /** @protected */
       isComplete: function(path) {
         return this.status in completingStatuses && this.dependenciesReady(path);
       },
@@ -1282,8 +1284,6 @@ http://opensource.org/licenses/MIT
             _this.error("Unable to properly attach events with the current browser configuration.");
           }
 
-          _this.requestObj._dependency = _this;
-
           //attempt to append the new element to the same container that's holding the "using" script
           if(configuration["scriptTag"]) {
             configuration["scriptTag"].parentElement.appendChild(_this.requestObj);
@@ -1425,13 +1425,6 @@ http://opensource.org/licenses/MIT
         var currentScript = document["currentScript"];
 
         return this.getDependencyForScriptTag(currentScript);
-      },
-      
-      locateLastScriptDependency: function() {
-        var allScripts = document.getElementsByTagName("script"),
-            lastScript = allScripts[allScripts.length - 1];
-        
-        return this.getDependencyForScriptTag(lastScript);
       },
       
       getDependencyForScriptTag: function(scriptTag) {
