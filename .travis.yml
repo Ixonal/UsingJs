@@ -1,4 +1,5 @@
 install: 
+  - sudo apt-get install java
   - npm install -g gulp
   - npm install
 
