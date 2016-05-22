@@ -2,7 +2,8 @@ var gulp = require("gulp"),
     debug = require("gulp-debug"),
     plumber = require("gulp-plumber"),
     rename = require("gulp-rename"),
-    closureCompiler = require("google-closure-compiler").gulp(),
+    closureCompiler = require("gulp-closure-compiler-service"),
+    //closureCompiler = require("google-closure-compiler").gulp(),
 
     config = require("./config").config;
     
@@ -11,14 +12,11 @@ function build(glob) {
              .pipe(plumber())
              .pipe(debug({ title: config.messages.building }))
              .pipe(gulp.dest(config.globs.dist))
-             .pipe(closureCompiler({
-               js_output_file: "using.min.js",
-               compilation_level: "ADVANCED_OPTIMIZATIONS",
-               warning_level: "DEFAULT"
+             .pipe(closureCompiler(config.settings.closureCompiler))
+             .pipe(rename({
+               suffix: ".min"
              }))
-             .pipe(rename(function(path) {
-               path.suffix = ".min";
-             }))
+             .pipe(debug({ title: config.messages.minifying }))
              .pipe(gulp.dest(config.globs.dist));
 }
 
