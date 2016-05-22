@@ -1,6 +1,8 @@
 UsingJs
 =======
 
+![Travis CI Build](https://travis-ci.org/Ixonal/UsingJs.svg?branch=master)
+
 Javascript async module loader. I know that many others exist, 
 however nothing did quite what I wanted it to do (except possibly for require.js, but
 it decided not to cooperate and I don't like that it takes two global variables), so 
