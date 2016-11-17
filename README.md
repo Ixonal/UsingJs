@@ -173,14 +173,14 @@ This is convenient for defining and exposing types.
 Dependencies may be described using either a string (as above) or an object of the following form:
 
     {
-      src: "Test",                  //source string as above                        (string, required)
-      type: "js or css",            //the type of file ("js" by default)           (string, optional)
-      noExtension: true || false,   //whether or not to add an extension           (boolean, optional)
-      conditionally: condition,     //whether or not to register this dependency   (boolean, optional)
-      dependsOn: "Something"        //A file on which this dependency is dependent (string, dependency, or array of either, optional)
-      backup: "alternate/location", //backup source location                       (string, optional)
-      name: "importName",           //name of the import                           (string, optional)
-      exports: "someObj",           //name of the global property considered to be (string, optional)
+      src: "Test",                  //source string as above                       (required, string)
+      type: "js or css",            //the type of file ("js" by default)           (optional, string)
+      noExtension: true || false,   //whether or not to add an extension           (optional, boolean)
+      conditionally: condition,     //whether or not to register this dependency   (optional, boolean)
+      dependsOn: "Something"        //A file on which this dependency is dependent (optional, string, dependency, or array of either)
+      backup: "alternate/location", //backup source location                       (optional, string)
+      name: "importName",           //name of the import                           (optional, string)
+      exports: "someObj",           //name of the global property considered to be (optional, string)
                                     //exported from the referenced module
     }
 
@@ -203,18 +203,22 @@ The "name" and "exports" properties can be used to import libraries that place t
       var $ = imports.$;
     });
   
+Note, however, that whatever properties were added to the global scope will remain there. This only creates a reference to them in the module imports.
+  
 ### Configurations: ###
 There are certain global options that can be configured:
 
     {
       srcName: "some/file.js", //string, name of the using script file (if changed)
-      scriptRoot: "/",         //string, default script root
-      styleRoot: "/",          //string, default style root
-      cached: true,            //boolean, whether or not to cache the source files
-      version: "1.0.0"         //string or number, a string to denote the current version of the app 
-                               //                  using this library. When the version increases, users will 
-                               //                  load the new files, but enjoy cached versions the rest of 
-                               //                  the time.
+      scriptRoot: "/",         //string, default script root. Can also be assigned from the "data-script-root" attribute 
+                               //        on the using script tag
+      styleRoot: "/",          //string, default style root. Can also be assigned from the "data-style-root" attribute 
+                               //        on the using script tag
+      cached: true,            //boolean, whether or not to cache the source files on the client
+      version: "1.0.0"         //string or number, a string or number to denote the current version of the app 
+                               //                  using this library. When the version changes, the new version 
+                               //                  of the files will be downloade, but then loaded from the cache 
+                               //                  on subsequent page loads
       debug: false             //boolean, whether or not to show error messages in log
     }
 
